@@ -1,0 +1,188 @@
+package com.glsx.oms.fcwechat.biz.flowcard.model;
+
+import java.io.Serializable;
+import java.util.List;
+
+public class FlowCard implements Serializable
+{
+    
+    /**
+    * 
+    */
+    private static final long serialVersionUID = 1L;
+    
+    private String imsi;
+    
+    private String cardNo;
+    
+    // 'ICCID 保存19位'
+    private String iccid;
+    
+    // '套餐名称'
+    private String pkname;
+    
+    // 卡状态 (0=可测试/1=库存卡/3=可激活/4=已激活/5=已停卡/6=已销卡)
+    private String cardstatus;
+    
+    // 流量服务列表
+    private List<FlowserviceList> flowservicelist;
+    
+    private String imei;
+    
+    // 实名认证状态 （0：未认证 1：已认证）
+    private String is_authname;
+    
+    // 运营商标识
+    private String op_code;
+    
+    // 套餐状态（0：库存/1:已激活2：已过期）
+    private String package_status;
+    
+   
+    
+    
+    
+    public FlowCard()
+    {
+        super();
+    }
+    
+    public FlowCard(String cardstatus,String iccid, String imsi, String cardNo, String imei, String is_authname, String op_code,
+        String package_status)
+    {
+        this.cardstatus = cardstatus;
+        this.iccid = iccid;
+        this.imsi = imsi;
+        this.cardNo = cardNo;
+        this.imei = imei;
+        this.is_authname = is_authname;
+        this.op_code = op_code;
+        this.package_status = package_status;
+    }
+    
+    public String getImsi()
+    {
+        return imsi;
+    }
+    
+    public void setImsi(String imsi)
+    {
+        this.imsi = imsi;
+    }
+    
+    public String getCardNo()
+    {
+        return cardNo;
+    }
+    
+    public void setCardNo(String cardNo)
+    {
+        this.cardNo = cardNo;
+    }
+    
+    public String getCardstatus()
+    {
+        return cardstatus;
+    }
+    
+    public void setCardstatus(String cardstatus)
+    {
+        this.cardstatus = cardstatus;
+    }
+    
+    public String getIccid()
+    {
+        return iccid;
+    }
+    
+    public void setIccid(String iccid)
+    {
+        this.iccid = iccid;
+    }
+    
+    public String getPkname()
+    {
+        return pkname;
+    }
+    
+    public void setPkname(String pkname)
+    {
+        this.pkname = pkname;
+    }
+    
+    
+    public List<FlowserviceList> getFlowserviceList()
+    {
+        return flowservicelist;
+    }
+    
+    public void setFlowserviceList(List<FlowserviceList> flowserviceList)
+    {
+        this.flowservicelist = flowserviceList;
+    }
+    
+    public String getImei()
+    {
+        return imei;
+    }
+    
+    public void setImei(String imei)
+    {
+        this.imei = imei;
+    }
+    
+    public String getIs_authname()
+    {
+        return is_authname;
+    }
+    
+    public void setIs_authname(String is_authname)
+    {
+        this.is_authname = is_authname;
+    }
+    
+    public String getOp_code()
+    {
+        return op_code;
+    }
+    
+    public void setOp_code(String op_code)
+    {
+        this.op_code = op_code;
+    }
+    
+    public String getPackage_status()
+    {
+        return package_status;
+    }
+    
+    public void setPackage_status(String package_status)
+    {
+        this.package_status = package_status;
+    }
+    
+  
+
+    /**
+     * 得到属性字符串
+     * 
+     * @return String 属性字符串
+     */
+    public String toString()
+    {
+        String line = System.getProperty("line.separator");
+        StringBuffer sb = new StringBuffer("{");
+        sb.append(line);
+        sb.append("imsi=").append((this.imsi)).append(line);
+        sb.append("cardNo=").append((this.cardNo)).append(line);
+        sb.append("cardstatus=").append((this.cardstatus)).append(line);
+        sb.append("iccid=").append((this.iccid)).append(line);
+        sb.append("pkname=").append((this.pkname)).append(line);
+        sb.append("cardstatus=").append((this.cardstatus)).append(line);
+        sb.append("flowservicelist=").append((this.flowservicelist)).append(line);
+        sb.append("imei=").append((this.imei)).append(line);
+        sb.append("}");
+        return sb.toString();
+    }
+    
+}

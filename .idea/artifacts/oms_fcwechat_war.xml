@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="oms-fcwechat:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="oms-fcwechat.war">
+      <element id="artifact" artifact-name="oms-fcwechat:war exploded" />
+    </root>
+  </artifact>
+</component>

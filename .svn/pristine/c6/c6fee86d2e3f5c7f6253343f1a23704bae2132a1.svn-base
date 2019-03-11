@@ -1,0 +1,475 @@
+package com.glsx.oms.fcwechat.biz.flowcard.util;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.apache.commons.httpclient.DefaultHttpMethodRetryHandler;
+import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpStatus;
+import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.commons.httpclient.params.HttpMethodParams;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.glsx.oms.fcwechat.biz.flowcard.model.Auth;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowConsumeDetail;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowOrder;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowRecords;
+import com.glsx.oms.fcwechat.biz.flowcard.model.PkList;
+import com.glsx.oms.fcwechat.framework.config.StaticProperty;
+
+@SuppressWarnings("deprecation")
+public class HttpUtils
+{
+    public final static Logger log = LoggerFactory.getLogger(HttpUtils.class);
+    
+    private JSONObject paraMap = new JSONObject();
+    
+    private String httpPostRequest(String url)
+    {
+        try
+        {
+            HttpPost request = new HttpPost(url);
+            log.info("request ioc-cs url:" + url);
+            // 绑定到请求 Entry
+            log.info("request ioc-cs url params:" + paraMap.toString());
+            request.addHeader("Content-type", "application/json; charset=utf-8");
+            request.setHeader("Accept", "application/json");
+            request.setEntity(new StringEntity(paraMap.toString(), Charset.forName("UTF-8")));
+            
+            // 发送请求
+            @SuppressWarnings("resource")
+            HttpResponse httpResponse = new DefaultHttpClient().execute(request);
+            // 得到应答的字符串，这也是一个 JSON 格式保存的数据
+            String retSrc = EntityUtils.toString(httpResponse.getEntity());
+            return retSrc;
+        }
+        catch (Exception e)
+        {
+            log.error("httpPostRequest {}", e);
+        }
+        return null;
+        
+    }
+    
+    private void setCommonParam(JSONObject paraMap, StaticProperty staticProperty)
+    {
+        paraMap.clear();
+        String date = String.valueOf(System.currentTimeMillis() / 1000);
+        String token = MD5Util.md5(staticProperty.getAppid() + staticProperty.getAppsecret() + date);
+        // token = token.toUpperCase();
+        paraMap.put("appid", staticProperty.getAppid());
+        // paraMap.put("appsecret", appsecret);
+        paraMap.put("token", token);
+        paraMap.put("time", date);
+    }
+    
+    // 流量查询
+    public FlowCard getCardFlow(FlowCard flowCard, StaticProperty staticProperty)
+    {
+        String[] iccids = new String[] {flowCard.getIccid()};
+        String cardDetailUrl = staticProperty.getUrl() + "/getCardFlow";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("iccidList", JSONObject.toJSON(iccids));
+        paraMap.remove("imei_imsi_iccid");
+        String retSrc = httpPostRequest(cardDetailUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            if (null != result.get("result"))
+            {
+                List<FlowCard> flowCardList = JSON.parseArray(result.get("result").toString(), FlowCard.class);
+                // JSONArray array =
+                // JSONObject.parseArray(result.get("result").toString());
+                return flowCardList.get(0);
+            }
+        }
+        else
+        {
+            return new FlowCard();
+        }
+        return new FlowCard();
+    }
+    
+    public FlowCard getCardIccid(String keyWord, StaticProperty staticProperty)
+    {
+        String cardIccidUrl = staticProperty.getUrl() + "/getCardIccid";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("cardno_imsi_iccid", JSONObject.toJSON(keyWord));
+        String retSrc = httpPostRequest(cardIccidUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            FlowCard basicInfo = new FlowCard(result.get("card_status").toString(), result.get("iccid").toString(),
+                result.get("imsi").toString(), result.get("cardno").toString(), result.get("imei").toString(),
+                result.get("is_authname").toString(), result.get("op_code").toString(),
+                result.get("package_status").toString());
+            return basicInfo;
+        }
+        else
+        {
+            return null;
+            
+        }
+    }
+    
+    public List<FlowRecords> getDealsHistory(String imsi, int isapply, StaticProperty staticProperty)
+    {
+        String getAuthStatusUrl = staticProperty.getUrl() + "/getDealsHistory";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("imsi", JSONObject.toJSON(imsi));
+        // 0：待生效 1：已生效 2：全部
+        paraMap.put("isapply", isapply);
+        
+        String retSrc = httpPostRequest(getAuthStatusUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            if (null != result.get("dealslist"))
+            {
+                List<FlowRecords> flowRecordsList =
+                    JSON.parseArray(result.get("dealslist").toString(), FlowRecords.class);
+                System.out.println(flowRecordsList.toString());
+                return flowRecordsList;
+            }
+        }
+        else
+        {
+            return null;
+        }
+        return null;
+    }
+    
+    // 流量充值
+    public List<PkList> getValidFlowPkg(String iccid, StaticProperty staticProperty)
+    {
+        String getValidFlowPkgUrl = staticProperty.getUrl() + "/getValidFlowPkg";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("iccid", iccid);
+        String retSrc = httpPostRequest(getValidFlowPkgUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            Object flowpkglist = result.get("flowpkglist");
+            if (null == flowpkglist)
+            {
+                return null;
+            }
+            List<PkList> pkList = JSON.parseArray(result.get("flowpkglist").toString(), PkList.class);
+            return pkList;
+        }
+        else
+        {
+            return null;
+        }
+    }
+    
+    // 实名认证
+    public String getAuthStatus(String imsi, StaticProperty staticProperty)
+    {
+        String getAuthStatusUrl = staticProperty.getUrl() + "/getAuthStatus";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("imsi", JSONObject.toJSON(imsi));
+        String retSrc = httpPostRequest(getAuthStatusUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            return result.get("isauth").toString() + "," + result.get("fail_reason").toString();
+        }
+        else
+        {
+            return null;
+        }
+    }
+    
+    public String setAuthStatus(String imsi, int isAuth, StaticProperty staticProperty)
+    {
+        String setAuthStatusUrl = staticProperty.getUrl() + "/setAuthStatus";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("imsi", JSONObject.toJSON(imsi));
+        paraMap.put("isAuth", JSONObject.toJSON(isAuth));
+        String retSrc = httpPostRequest(setAuthStatusUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        return result.get("ret").toString();
+    }
+    
+    public String nameAuth(Auth auth, StaticProperty staticProperty)
+        throws Exception
+    {
+        String nameAuthUrl = staticProperty.getUrl() + "/nameAuth";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("imsi", auth.getImsi());
+        paraMap.put("name", auth.getName());
+        paraMap.put("phoneNo", auth.getPhoneNo());
+        paraMap.put("idNo", auth.getIdNo());
+        paraMap.put("photo", auth.getPhoto());
+        paraMap.put("photoPos", auth.getPhotoPos());
+        paraMap.put("photoOpp", auth.getPhotoOpp());
+        paraMap.put("openid", auth.getOpenid());
+        String retSrc = httpPostRequest(nameAuthUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        return result.get("ret").toString();
+    }
+    
+    public String addPhoto(InputStream is, String fileName, Long fileSize, StaticProperty staticProperty)
+    {
+        String downUrl = null;
+        HttpClient httpclient = new HttpClient();
+        String url = staticProperty.getImgUrl();
+        
+        PostMethod postMethod = new PostMethod(url + "?user=weixin&fname=" + fileName + "&fsize=" + fileSize);
+        
+        List<Header> headers = new ArrayList<Header>();
+        
+        headers.add(new Header("Content-Length", String.valueOf(fileSize)));
+        
+        httpclient.getHostConfiguration().getParams().setParameter("http.default-headers", headers);
+        
+        postMethod.getParams().setParameter(HttpMethodParams.RETRY_HANDLER, new DefaultHttpMethodRetryHandler());
+        try
+        {
+            postMethod.setRequestBody(is);
+            
+            // （4）执行postMethod
+            int statusCode = httpclient.executeMethod(postMethod);
+            
+            if (statusCode == HttpStatus.SC_REQUEST_TOO_LONG)
+            {
+                log.error("Method failed:{}", postMethod.getStatusLine());
+                return String.valueOf(statusCode);
+            }
+            else if (statusCode != HttpStatus.SC_OK)
+            {
+                
+                log.error("Method failed:{}", postMethod.getStatusLine());
+                return null;
+            }
+            
+            InputStream inputStream = postMethod.getResponseBodyAsStream();
+            
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+            
+            StringBuffer stringBuffer = new StringBuffer();
+            
+            String str = "";
+            
+            while ((str = br.readLine()) != null)
+            {
+                stringBuffer.append(str);
+            }
+            
+            log.info(stringBuffer.toString());
+            
+            String reuslt = stringBuffer.toString();
+            
+            JSONObject json = JSONObject.parseObject(reuslt);
+            
+            String results = json.get("results").toString();
+            
+            JSONObject jsons = JSONObject.parseObject(results);
+            
+            downUrl = jsons.get("downUrl").toString();
+            
+        }
+        catch (Exception e)
+        {
+            // 发生致命的异常，可能是协议不对或者返回的内容有问题
+            log.error("Please check your provided http address!{}", e);
+        }
+        finally
+        {
+            // 释放连接
+            postMethod.releaseConnection();
+        }
+        return downUrl;
+    }
+    
+    // 充值
+    public FlowOrder submitOrder(String[] iccidlist, int flowpkgtype, int relation_id, int orderfrom,
+        StaticProperty staticProperty)
+    {
+        String nameAuthUrl = staticProperty.getUrl() + "/submitOrder";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("iccidlist", JSONObject.toJSON(iccidlist));
+        paraMap.put("flowpkgtype", JSONObject.toJSON(flowpkgtype));
+        paraMap.put("relation_id", JSONObject.toJSON(relation_id));
+        paraMap.put("orderfrom", orderfrom);
+        String retSrc = httpPostRequest(nameAuthUrl);
+        log.info(retSrc);
+        FlowOrder flowOrder = null;
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            flowOrder = new FlowOrder();
+            flowOrder.setOrderNo(result.get("order_no").toString());
+            flowOrder.setPrice(result.get("order_price").toString());
+            flowOrder.setFlowName(result.get("flowpkgname").toString());
+            // flowOrder.setFlowName("流量卡续费订单");
+            return flowOrder;
+        }
+        else
+        {
+            return flowOrder;
+        }
+    }
+    
+    public String processOrder(String Order_no, String tid, String content, StaticProperty staticProperty)
+    {
+        String nameAuthUrl = staticProperty.getUrl() + "/processOrder";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("Order_no", JSONObject.toJSON(Order_no));
+        paraMap.put("tid", JSONObject.toJSON(tid));
+        paraMap.put("content", content);
+        String retSrc = httpPostRequest(nameAuthUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        return result.get("ret").toString();
+        
+    }
+    
+    public String generateOrder(String orderNo, String productName, int price)
+    {
+        return null;
+    }
+    
+    public String addPhoto(MultipartFile uploadFiles, StaticProperty staticProperty)
+    {
+        String downUrl = null;
+        HttpClient httpclient = new HttpClient();
+        String fileName = uploadFiles.getOriginalFilename();
+        if (fileName.indexOf(".") < 0)
+        {
+            fileName = UUID.randomUUID() + ".jpg";
+        }
+        Long size = uploadFiles.getSize();
+        
+        String url = staticProperty.getImgUrl();
+        
+        PostMethod postMethod = new PostMethod(url + "?user=weixin&fname=" + fileName + "&fsize=" + size);
+        
+        List<Header> headers = new ArrayList<Header>();
+        
+        headers.add(new Header("Content-Length", String.valueOf(size)));
+        
+        httpclient.getHostConfiguration().getParams().setParameter("http.default-headers", headers);
+        
+        postMethod.getParams().setParameter(HttpMethodParams.RETRY_HANDLER, new DefaultHttpMethodRetryHandler());
+        try
+        {
+            postMethod.setRequestBody(uploadFiles.getInputStream());
+            
+            // （4）执行postMethod
+            int statusCode = httpclient.executeMethod(postMethod);
+            
+            if (statusCode == HttpStatus.SC_REQUEST_TOO_LONG)
+            {
+                log.error("Method failed:{},{}", url, postMethod.getStatusLine());
+                return String.valueOf(statusCode);
+            }
+            else if (statusCode != HttpStatus.SC_OK)
+            {
+                
+                log.error("Method failed:{},{}", url, postMethod.getStatusLine());
+                return null;
+            }
+            
+            InputStream inputStream = postMethod.getResponseBodyAsStream();
+            
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+            
+            StringBuffer stringBuffer = new StringBuffer();
+            
+            String str = "";
+            
+            while ((str = br.readLine()) != null)
+            {
+                stringBuffer.append(str);
+            }
+            
+            log.info(stringBuffer.toString());
+            
+            String reuslt = stringBuffer.toString();
+            
+            JSONObject json = JSONObject.parseObject(reuslt);
+            
+            String results = json.get("results").toString();
+            
+            JSONObject jsons = JSONObject.parseObject(results);
+            
+            downUrl = jsons.get("downUrl").toString();
+            
+        }
+        catch (Exception e)
+        {
+            // 发生致命的异常，可能是协议不对或者返回的内容有问题
+            log.error("Please check your provided http address!{}", e);
+        }
+        finally
+        {
+            // 释放连接
+            postMethod.releaseConnection();
+        }
+        return downUrl;
+    }
+    
+    /**
+     * 获取流量消耗历史记录
+     * 
+     * @param imsi
+     * @param staticProperty
+     * @return
+     */
+    public List<FlowConsumeDetail> getFlowHistory(String iccid, int type, String beginDatetime, String endDatetime,
+        StaticProperty staticProperty)
+    {
+        String getAuthStatusUrl = staticProperty.getUrl() + "/getFlowHistory";
+        setCommonParam(paraMap, staticProperty);
+        paraMap.put("iccid", iccid);
+        // 0:日消耗 1月消耗 2年消耗
+        paraMap.put("type", type);
+        // 查询量，表示查询的天数或月数或年数
+        paraMap.put("begindatetime", beginDatetime);
+        paraMap.put("enddatetime", endDatetime);
+        String retSrc = httpPostRequest(getAuthStatusUrl);
+        log.info(retSrc);
+        JSONObject result = JSONObject.parseObject(retSrc);
+        if ("0".equals(result.get("ret").toString()))
+        {
+            if (null != result.get("data"))
+            {
+                List<FlowConsumeDetail> flowRecordsList =
+                    JSON.parseArray(result.get("data").toString(), FlowConsumeDetail.class);
+                log.info(flowRecordsList.toString());
+                return flowRecordsList;
+            }
+        }
+        else
+        {
+            return null;
+        }
+        return null;
+    }
+    
+}

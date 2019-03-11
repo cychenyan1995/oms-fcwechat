@@ -1,0 +1,2 @@
+server.port=80
+test.path=http://localhost:8888/fcwechat

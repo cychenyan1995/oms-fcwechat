@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.glsx.oms.fcwechat.biz.flowcard.mapper.QrcodeMapper">
+
+	<select id="selectQrcode" parameterType="java.lang.String" resultType="com.glsx.oms.fcwechat.biz.flowcard.model.Qrcode">
+		SELECT imsi imsi,qrcode_url qrcodeUrl,expire_seconds expireSeconds,ticket ticket,
+			create_time createTime FROM wechat_qrcode WHERE imsi = #{imsi}
+	</select>
+	
+	<update id="updateQrcode" parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.Qrcode">
+		UPDATE wechat_qrcode SET qrcode_url = #{qrcodeUrl}, expire_seconds = #{expireSeconds},
+			ticket = #{ticket}, create_time = NOW()
+		WHERE imsi = #{imsi}
+	</update>
+	
+	<insert id="insertQrcode"  parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.Qrcode">
+		INSERT INTO wechat_qrcode(
+			imsi,
+			qrcode_url,
+			expire_seconds,
+			ticket,
+			create_time
+		) VALUES(
+			#{imsi},
+			#{qrcodeUrl},
+			#{expireSeconds},
+			#{ticket},
+			NOW()
+		)
+	</insert>
+</mapper>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.glsx.oms.fcwechat.biz.flowcard.mapper.MsgLogMapper">
+
+	<insert id="insertLog"  parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.MsgLog">
+		INSERT INTO wechat_msglog(
+			create_time,
+			content,
+			fail_reason,
+			imsi,
+			openId,
+			process_ret
+		) VALUES(
+			now(),
+			#{content},
+			#{fail_reason},
+			#{imsi},
+			#{openId},
+			#{processRet}
+		)
+	</insert>
+</mapper>

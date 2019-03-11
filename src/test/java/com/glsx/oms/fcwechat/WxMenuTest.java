@@ -1,0 +1,69 @@
+package com.glsx.oms.fcwechat;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.soecode.wxtools.api.IService;
+import com.soecode.wxtools.api.WxService;
+import com.soecode.wxtools.bean.WxMenu;
+import com.soecode.wxtools.bean.WxMenu.WxMenuButton;
+import com.soecode.wxtools.exception.WxErrorException;
+
+public class WxMenuTest
+{
+    private final static Logger logger = LoggerFactory.getLogger(WxMenuTest.class);
+    
+    private IService service = new WxService();
+    
+    // 开发环境
+    private String url = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx4a3fe8eba7ab8bd5&redirect_uri=";
+    
+    // 测试环境  
+    //private String url = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wxfc5bf97edcb53328&redirect_uri=";
+    //private String url = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx56bed167ad463f70&redirect_uri=";
+    //生产环境
+    //private String url = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wxeb509497634291f1&redirect_uri=";
+    
+    private String param = "&response_type=code&scope=snsapi_base&state=#wechat_redirect";
+    
+    // 开发环境
+     private String domain = "http://devwx.glsx.com.cn";
+    
+    // private String domain = "http://qcwx.glsx.com.cn";
+    
+     //private String domain = "http://wx.glsx.com.cn";
+    
+    @Test
+    public void createMenu()
+        throws WxErrorException
+    {
+        WxMenu menu = new WxMenu();
+        List<WxMenuButton> button = new ArrayList<WxMenuButton>();
+        
+        WxMenuButton element = new WxMenuButton();
+        element.setName("流量查询");
+        element.setKey("V1001_TODAY_MUSIC");
+        element.setType("view");
+        element.setUrl(url + domain + "/fcwechat/html/api/router?action=flowQuery" + param);
+        
+        WxMenuButton element1 = new WxMenuButton();
+        element1.setName("实名认证");
+        element1.setType("view");
+        element1.setUrl(url + domain + "/fcwechat/html/api/router?action=authQuery" + param);
+        
+        WxMenuButton element2 = new WxMenuButton();
+        element2.setName("流量充值");
+        element2.setType("view");
+        element2.setUrl(url + domain + "/fcwechat/html/api/router?action=flowCharge" + param);
+        button.add(element);
+        button.add(element1);
+        button.add(element2);
+        menu.setButton(button);
+        logger.info(service.createMenu(menu, false));
+        
+    }
+}

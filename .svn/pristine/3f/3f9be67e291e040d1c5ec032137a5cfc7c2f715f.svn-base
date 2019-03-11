@@ -1,0 +1,88 @@
+package com.glsx.oms.fcwechat.framework.handler;
+
+import java.util.Map;
+
+import org.oreframework.context.SpringContext;
+
+import com.glsx.oms.fcwechat.biz.wechat.user.model.User;
+import com.glsx.oms.fcwechat.biz.wechat.user.service.UserService;
+import com.soecode.wxtools.api.IService;
+import com.soecode.wxtools.api.WxConsts;
+import com.soecode.wxtools.api.WxMessageHandler;
+import com.soecode.wxtools.bean.WxXmlMessage;
+import com.soecode.wxtools.bean.WxXmlOutMessage;
+import com.soecode.wxtools.exception.WxErrorException;
+
+/**
+ * 示例：DemoHandler 目的：返回用户 “恭喜你中奖了”
+ * 
+ * @author antgan
+ * @date 2016/12/15
+ *
+ */
+public class FcWechatHandler implements WxMessageHandler
+{
+    
+    private UserService userService;
+    
+    @Override
+    public WxXmlOutMessage handle(WxXmlMessage wxMessage, Map<String, Object> context, IService iService)
+        throws WxErrorException
+    {
+        // 必须以build()作为结尾，否则不生效。
+        WxXmlOutMessage xmlOutMsg = null;
+        userService = (UserService)SpringContext.getBean("userService");
+        
+        // 关注
+        if (WxConsts.EVT_SUBSCRIBE.equals(wxMessage.getEvent()))
+        {
+            User user = new User();
+            user.setWxNo(wxMessage.getFromUserName());
+            user = userService.getUser(user);
+            if (null == user)
+            {
+                user = new User();
+                user.setWxNo(wxMessage.getFromUserName());
+                user.setMerchantId("19180001");
+                user.setStatus(1);
+                userService.save(user);
+            }
+            else
+            {
+                user.setMerchantId("19180001");
+                user.setStatus(1);
+                userService.updateUserStatus(user);
+            }
+            
+            xmlOutMsg = WxXmlOutMessage.TEXT()
+                .content("欢迎关注广联流量管理平台!")
+                .toUser(wxMessage.getFromUserName())
+                .fromUser(wxMessage.getToUserName())
+                .build();
+        }
+        // 取消关注
+        if (WxConsts.EVT_UNSUBSCRIBE.equals(wxMessage.getEvent()))
+        {
+            User user = new User();
+            user.setWxNo(wxMessage.getFromUserName());
+            user = userService.getUser(user);
+            if (null == user)
+            {
+                user = new User();
+                user.setWxNo(wxMessage.getFromUserName());
+                user.setMerchantId("19180001");
+                user.setStatus(0);
+                userService.save(user);
+            }
+            else
+            {
+                user.setMerchantId("19180001");
+                user.setStatus(0);
+                userService.updateUserStatus(user);
+            }
+        }
+        
+        return xmlOutMsg;
+    }
+    
+}

@@ -1,0 +1,494 @@
+package com.glsx.oms.fcwechat.biz.flowcard.controller;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.io.Writer;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+
+import org.oreframework.common.lang.date.DateFormatConstants;
+import org.oreframework.common.lang.date.DateUtils;
+import org.oreframework.util.qrcode.QrcodeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.ModelAndView;
+import org.weixin4j.Weixin;
+import org.weixin4j.WeixinException;
+import org.weixin4j.pay.PayNotifyResult;
+import org.weixin4j.pay.PayUtil;
+import org.weixin4j.pay.SignUtil;
+import org.weixin4j.pay.UnifiedOrder;
+import org.weixin4j.pay.UnifiedOrderResult;
+import org.weixin4j.pay.WCPay;
+
+import com.alibaba.dubbo.config.annotation.Reference;
+import com.glsx.oms.fcservice.api.core.FlowResponse;
+import com.glsx.oms.fcservice.api.core.FlowRetrunCode;
+import com.glsx.oms.fcservice.api.entity.FlowPackage;
+import com.glsx.oms.fcservice.api.entity.Flowcard;
+import com.glsx.oms.fcservice.api.manager.OpsMgrManager;
+import com.glsx.oms.fcservice.api.request.FlowCardRequest;
+import com.glsx.oms.fcservice.api.request.FlowOrderRequest;
+import com.glsx.oms.fcwechat.biz.Constants;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowOrder;
+import com.glsx.oms.fcwechat.biz.flowcard.model.PayLog;
+import com.glsx.oms.fcwechat.biz.flowcard.model.PkList;
+import com.glsx.oms.fcwechat.biz.flowcard.service.FlowcardService;
+import com.glsx.oms.fcwechat.biz.flowcard.service.PayLogService;
+import com.glsx.oms.fcwechat.biz.flowcard.util.RandomUtil;
+import com.glsx.oms.fcwechat.framework.config.PayProperty;
+import com.glsx.oms.fcwechat.framework.config.WxToolsProperties;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Result;
+import com.google.zxing.WriterException;
+
+@RestController
+public class FlowChargeController {
+	private static Logger logger = LoggerFactory.getLogger(FlowChargeController.class);
+	
+	@Autowired
+	private WxToolsProperties wxToolsProperties;
+	
+
+	@Autowired
+	private PayProperty payProperty;
+
+	@Autowired
+	private PayLogService payLogService;
+	@Autowired
+    private FlowcardService flowcardService;
+	
+	// 如果用@Reference注解版本号不能去掉
+	@Reference(version = "1.0.0")
+	private OpsMgrManager opsMgrManager;
+
+	private FlowOrder flowOrder;
+
+	private FlowCard flowCard;
+
+	/**
+	 * 生成订单
+	 * 
+	 * @param request
+	 * @param flowOrder
+	 * @return
+	 */
+	private WCPay generateWeChatOrder(HttpServletRequest request, FlowOrder flowOrder) {
+		String openId = (String) request.getSession().getAttribute("openId");
+		if (null == openId) {
+			logger.error("\n \n request.getSession() openId： {}", openId);
+			return null;
+		}
+
+		// 测试使用
+		String testOpenId = payProperty.getOpenId();
+		if (null != testOpenId) {
+			openId = testOpenId;
+		}
+		Weixin weixin = new Weixin();
+		WCPay wcPay = null;
+
+		UnifiedOrder unifiedorder = new UnifiedOrder();
+		unifiedorder.setAppid(payProperty.getAppId());// 公众账号ID
+		unifiedorder.setBody(flowOrder.getFlowName());// 商品描述
+		unifiedorder.setMch_id(payProperty.getMchId());// 商户号
+		unifiedorder.setNonce_str(RandomUtil.createNonceStr());// 随机字符串
+		unifiedorder.setNotify_url(payProperty.getNotifyUrl());// 通知地址
+		unifiedorder.setOpenid(openId);// 用户标识
+		unifiedorder.setOut_trade_no(flowOrder.getOrderNo());// 商户订单号
+		unifiedorder.setSpbill_create_ip("183.62.222.180");
+		// 标价金额，微信金额单位为分
+		Double price = Double.parseDouble(flowOrder.getPrice()) * 100;
+		unifiedorder.setTotal_fee(String.valueOf(price.intValue()));
+		unifiedorder.setTrade_type("JSAPI");// 标价币种
+
+		unifiedorder.setSign(SignUtil.getSign(unifiedorder.toMap(), payProperty.getPaternerKey()));// 签名
+		try {
+			UnifiedOrderResult result = weixin.payUnifiedOrder(unifiedorder);
+			JAXBContext context = JAXBContext.newInstance(UnifiedOrderResult.class);
+			Marshaller marshaller = context.createMarshaller();
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+			Writer w = new StringWriter();
+			marshaller.marshal(result, w);
+			String xml = w.toString();
+
+			logger.info("\n \n 返回结果： {}", xml);
+
+			wcPay = PayUtil.getBrandWCPayRequest(payProperty.getAppId(), result.getPrepay_id(), payProperty.getPaternerKey());
+		} catch (WeixinException e) {
+			logger.error("WeixinException {}", e);
+		} catch (JAXBException e) {
+			logger.error("JAXBException {}", e);
+		}
+		return wcPay;
+	}
+
+	private FlowOrder submitOrder(int flowpkgtype, int relation_id, String[] iccid, Map<String, Object> myMap) throws Exception {
+		FlowOrder flowOrder = null;
+		FlowOrderRequest orderRequest = new FlowOrderRequest();
+        orderRequest.setIccidList(iccid);
+        orderRequest.setFlowPkgType(flowpkgtype);
+        orderRequest.setRelationId(relation_id);
+        orderRequest.setOrderfrom(0);
+        orderRequest.setConsumer("oms-fcwechat");
+        orderRequest.setVersion("1.0.0");
+        orderRequest.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+		FlowResponse<com.glsx.oms.fcservice.api.entity.FlowOrder> retResult = opsMgrManager.submitOrder(orderRequest);
+		if(retResult.getCode().equals(FlowRetrunCode.REUTNCODE_SUCCEED)){
+		    flowOrder = new FlowOrder();
+			flowOrder.setFlowName(retResult.getEntiy().getPackageName());
+			flowOrder.setOrderNo(retResult.getEntiy().getOrderNo());
+			flowOrder.setPrice(retResult.getEntiy().getOrderPrice());
+		}else {
+			logger.error("生成订单号为空 submitOrder {}", flowOrder);
+			myMap.put("flowOrder", retResult.getCode());
+			return flowOrder;
+		}
+		
+		if (null != payProperty.getPrice()) {
+			flowOrder.setPrice(payProperty.getPrice());
+			logger.error("配置项取订单价格  price {}", payProperty.getPrice());
+		} else {
+			logger.error("生成订单价格  price {}", flowOrder.getPrice());
+		}
+		return flowOrder;
+	}
+
+	/**
+	 * 获取套餐的种类
+	 * 
+	 * @param session
+	 * @return
+	 * @throws Exception 
+	 */
+	@RequestMapping(value = "/api/getFlowPkg", method = { RequestMethod.POST, RequestMethod.GET })
+	public Map<String, Object> getFlowPkg(HttpSession session) throws Exception {
+		flowCard = (FlowCard) session.getAttribute("cardInfo");
+		FlowCardRequest cardRequest = new FlowCardRequest();
+		cardRequest.setIccid(flowCard.getIccid());
+		cardRequest.setConsumer("oms-fcwechat");
+		cardRequest.setVersion("1.0.0");
+		cardRequest.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+		FlowResponse<List<FlowPackage>> retResult = opsMgrManager.getValidFlowPkg(cardRequest);
+        List<FlowPackage> list = new ArrayList<FlowPackage>();
+        List<PkList> pkList = new ArrayList<PkList>();
+		if("1000".equals(retResult.getCode())){
+			list = retResult.getEntiy();
+			if(null != list && list.size() > 0){
+	            for (int i = 0; i < list.size(); i++) {
+	            	PkList bean = new PkList(); 
+	            	FlowPackage flowPackage = list.get(i);
+	            	bean.setFlowpkgname(flowPackage.getFlowpkgname());
+	            	bean.setFlowpkgtype(flowPackage.getFlowpkgtype());
+	            	bean.setRelation_id(flowPackage.getRelation_id());
+	            	bean.setPrice(String.valueOf(flowPackage.getPrice()));
+	            	bean.setPkgalias(flowPackage.getPkgalias());
+	            	bean.setPkgdesc(flowPackage.getPkgdesc());
+	            	bean.setFlowserv_type(flowPackage.getFlowserv_type());
+	            	bean.setTotal_flow(String.valueOf(flowPackage.getTotal_flow()));
+	            	bean.setFlow_unit(flowPackage.getFlow_unit());
+	            	bean.setIs_month_clean(flowPackage.getIs_month_clean());
+	            	bean.setFlowserv_pay_date(flowPackage.getFlowserv_pay_date());
+	            	bean.setValid_cycle(flowPackage.getValid_cycle());
+	            	bean.setPer_cycle_flow(String.valueOf(flowPackage.getPer_cycle_flow()));
+	            	bean.setCharge_cycle(String.valueOf(flowPackage.getCharge_cycle()));
+	            	bean.setCharge_mode(String.valueOf(flowPackage.getCharge_mode()));
+	            	bean.setValid_cycle_unit(flowPackage.getValid_cycle_unit());
+	            	bean.setIs_unlimit_flow(flowPackage.getIs_unlimit_flow());
+	            	pkList.add(bean);
+	    		}
+	        }
+		}
+		
+		Map<String, Object> myMap = new HashMap<String, Object>();
+		myMap.put("pkList", pkList);
+		return myMap;
+	}
+
+	/**
+	 * 生成支付二维码
+	 * 
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = "/api/generatePaymentQrcode", method = { RequestMethod.POST, RequestMethod.GET })
+	public ModelAndView generatePaymentQrcode(HttpServletRequest request) {
+		String sessionId = request.getSession().getId();
+		try {
+			String path = request.getServletContext().getRealPath("/");
+			//String url = "redirect:" + request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+			String url = request.getScheme() + "://" + request.getServerName() + request.getContextPath();
+			QrcodeUtil.createQrCode("https://open.weixin.qq.com/connect/oauth2/authorize?appid="+wxToolsProperties.getAppId()+"&redirect_uri="+url+"/html/api/router?action=paymentQrcode&response_type=code&scope=snsapi_base&state=2,20003,8986061501003065211," + sessionId + "#wechat_redirect", path + "/qrcode", sessionId);
+		} catch (IOException e) {
+			logger.error("生成支付二维码失败{}\n", e);
+		} catch (WriterException e) {
+			logger.error("生成支付二维码失败{}\n", e);
+		}
+		String url = "redirect:" + request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+		ModelAndView view = new ModelAndView(url + "/html/flowCharge/qrcodePayment.html?sessionId=" + sessionId + ".png");
+
+		return view;
+	}
+
+	/**
+	 * 识别支付二维码
+	 * 
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = "/api/discernQrcode", method = { RequestMethod.POST, RequestMethod.GET })
+	public ModelAndView discernQrcode(HttpServletRequest request) {
+		String path = request.getServletContext().getRealPath("/");
+		File file = new File(path + "/qrcode/" + request.getSession().getId() + ".png");
+		String url = "";
+		try {
+			Result result = QrcodeUtil.parseQrCode(file);
+			url = result.getText();
+		} catch (NotFoundException e) {
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		ModelAndView view = new ModelAndView("redirect:" + url);
+		return view;
+	}
+
+	/**
+	 * 提交流量管理系统订单
+	 * 
+	 * @param session
+	 * @param flowpkgtype
+	 * @param relation_id
+	 * @return
+	 * @throws Exception 
+	 */
+	@RequestMapping(value = "/api/commitOrderByQrcode", method = { RequestMethod.POST, RequestMethod.GET })
+	public ModelAndView commitOrderByQrcode(HttpServletRequest request) throws Exception // flowpkgtype
+	// 套餐类型
+	{
+		String state = request.getParameter("state");
+		String[] stateParams = state.split(",");
+		// int flowpkgtype, int relation_id
+		int flowpkgtype = Integer.valueOf(stateParams[0]);
+		int relation_id = Integer.valueOf(stateParams[1]);
+		String iccid = stateParams[2];
+		flowCard = new FlowCard();
+		flowCard.setIccid(iccid);
+
+		FlowCardRequest flowCardRequest = new FlowCardRequest();
+		flowCardRequest.setIccid(flowCard.getIccid());
+		flowCardRequest.setConsumer("oms-fcwechat");
+		flowCardRequest.setVersion("1.0.0");
+		flowCardRequest.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+		FlowResponse<Flowcard> flowcard = opsMgrManager.getCardIccid(flowCardRequest);
+		/*
+		 * FlowCard fc = new FlowCard(); fc.setCardNo("861064610752611");
+		 * fc.setImsi("460060082076516");
+		 */
+		Map<String, Object> myMap = new HashMap<String, Object>();
+		FlowOrder flowOrder = submitOrder(flowpkgtype, relation_id, new String[] { iccid }, myMap);
+		/*
+		 * FlowOrder flowOrder = new FlowOrder(); flowOrder.setPrice("0.1");
+		 * flowOrder.setFlowName("续通：100M*6/1年");
+		 * flowOrder.setOrderNo("12345678910");
+		 */
+		request.getSession().setAttribute("flowOrder", flowOrder);
+
+		String params = "";
+		String url = "";
+		if (null != flowOrder) {
+			url = "redirect:" + request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+			try {
+				String price = flowOrder.getPrice();
+				String flowTitle = "100M*6/12月";
+				String flowTypeName = URLEncoder.encode("累计流量套餐", "utf-8");
+				String validDes = URLEncoder.encode("当前套餐结束后生效", "utf-8");
+				String order_no = flowOrder.getOrderNo();
+				String flowpkgname = URLEncoder.encode(flowOrder.getFlowName(), "utf-8");
+				String validtime = URLEncoder.encode("12月", "utf-8");
+				String is_month_clean = URLEncoder.encode("月底不清零", "utf-8");
+				String flowserv_pay_date = URLEncoder.encode("每月1日", "utf-8");
+
+				params = "price=" + price + "&flowTitle=" + flowTitle + "&flowTypeName=" + flowTypeName + "&validDes=" + validDes 
+						+ "&order_no=" + order_no + "&flowpkgname=" + flowpkgname + "&validtime=" + validtime + "&is_month_clean=" 
+						+ is_month_clean + "&flowserv_pay_date=" + flowserv_pay_date + "&iccid=" + flowCard.getIccid() 
+						+ "&imsi=" + flowcard.getEntiy().getImsi() + "&cardNo=" + flowcard.getEntiy().getCardNo();
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		}
+		ModelAndView view = new ModelAndView(url + "/html/flowCharge/orderConfirmation.html?" + params);
+		return view;
+
+	}
+
+	/**
+	 * 提交流量管理系统订单
+	 * 
+	 * @param session
+	 * @param flowpkgtype
+	 * @param relation_id
+	 * @return
+	 * @throws Exception 
+	 */
+	@RequestMapping(value = "/api/commitOrder", method = { RequestMethod.POST, RequestMethod.GET })
+	public Map<String, Object> commitOrder(HttpServletRequest request, HttpSession session, int flowpkgtype, int relation_id) throws Exception // flowpkgtype
+	// 套餐类型
+	{
+		flowCard = (FlowCard) session.getAttribute("cardInfo");
+		String[] iccid = null;
+		if (null == flowCard) {
+			iccid = new String[] { request.getParameter("iccid") };
+		} else {
+			iccid = new String[] { flowCard.getIccid() };
+		}
+
+		Map<String, Object> myMap = new HashMap<String, Object>();
+		FlowOrder flowOrder = submitOrder(flowpkgtype, relation_id, iccid, myMap);
+		session.setAttribute("flowOrder", flowOrder);
+		myMap.put("flowOrder", flowOrder);
+		
+		return myMap;
+	}
+
+	/**
+	 * 处理生成微信订单
+	 * 
+	 * @param request
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = "/api/processOrder", method = { RequestMethod.POST, RequestMethod.GET })
+	public Map<String, Object> processOrder(HttpServletRequest request, HttpSession session) {
+		Map<String, Object> myMap = new HashMap<String, Object>();
+		flowOrder = (FlowOrder) session.getAttribute("flowOrder");
+		if (null == flowOrder) {
+			return myMap;
+		}
+		WCPay wcPay = generateWeChatOrder(request, flowOrder);
+		if (null != wcPay && !"prepay_id=null".equals(wcPay.getPackage())) {
+			int start = wcPay.getPackage().indexOf("=") + 1;
+			session.setAttribute("prepayId", wcPay.getPackage().substring(start, wcPay.getPackage().length()));
+			myMap.put("order_no", flowOrder.getOrderNo());
+			myMap.put("wcPay", wcPay);
+			//流量充值交互成功后，保存openId
+	        String openId = (String)request.getSession().getAttribute("openId");
+	        if (null == openId)
+	        {
+	            logger.error("\n \n request.getSession() openId： {}", openId);
+	            return null;
+	        }else{
+	        	//保存openId
+	            flowCard.setOpenId(openId);
+	            flowcardService.updateOpenId(flowCard);
+	            flowcardService.updateOpenIdNotify(flowCard);
+	        }
+		} else {
+			myMap.put("order_no", null);
+		}
+		return myMap;
+	}
+
+	/**
+	 * 微信支付成功上报回调接口
+	 * 
+	 * @param body
+	 * @throws Exception 
+	 */
+	@RequestMapping(value = "/api/payNotify", method = { RequestMethod.POST, RequestMethod.GET })
+	public String payNotify(@RequestBody String body,HttpServletRequest request) throws Exception {
+		logger.info("微信支付回调返回...{}", body);
+
+		PayLog payLog = new PayLog();
+		payLog.setContent(body);
+
+		try {
+			JAXBContext context = JAXBContext.newInstance(PayNotifyResult.class);
+
+			Unmarshaller unmarshaller = context.createUnmarshaller();
+			PayNotifyResult result = (PayNotifyResult) unmarshaller.unmarshal(new StringReader(body));
+
+			// 支付完成后执行订单
+			String content = "微信支付";
+			if ("SUCCESS".equals(result.getResult_code()) && "SUCCESS".equals(result.getReturn_code())) {
+				payLog.setStatus(1);
+				payLog.setProcessRet(1);
+				FlowOrderRequest orderBean = new FlowOrderRequest();
+				orderBean.setOrderNo(result.getOut_trade_no());
+				orderBean.setSource(content);
+				orderBean.setConsumer("oms-fcwechat");
+				orderBean.setVersion("1.0.0");
+				orderBean.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+				opsMgrManager.processOrder(orderBean);
+				logger.info("修改订单状态,支付成功...{}", body);
+			} else {
+				payLog.setStatus(0);
+				logger.info("修改订单状态,支付失败...{}", body);
+			}
+
+		} catch (JAXBException e) {
+			payLog.setProcessRet(0);
+			logger.info("微信支付回调返回...{}", e);
+		}
+		payLogService.insertLog(payLog);
+		String msg = "<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>";
+		
+		return msg;
+	}
+	
+	/**
+	 * 判断当前套餐是否已开通
+	 * 
+	 * @param request
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = "/api/isOpenPackage", method = { RequestMethod.POST, RequestMethod.GET })
+	public Map<String, String> isOpenPackage(HttpServletRequest request, HttpSession session) {
+		Map<String, String> myMap = new HashMap<String, String>();
+		flowCard = (FlowCard) session.getAttribute("cardInfo");
+		String appid = wxToolsProperties.getAppId();
+        String baseUrl = wxToolsProperties.getBaseUrl();
+        String keyWord = flowCard.getIccid();
+        
+		if (null == flowCard) {
+			return myMap;
+		}
+		//判断当前套餐是否已开通
+        FlowCard bean = flowcardService.getCardPackageInfo(keyWord);
+        if((Constants.STATUS_STOCK.equals(bean.getPackage_status()) && Constants.WHITE_STATUS_NO.equals(bean.getEmptyStatus()))
+        		|| (Constants.STATUS_STOCK.equals(bean.getPackage_status()) && Constants.WHITE_STATUS_OPEN.equals(bean.getEmptyStatus()))
+        		|| (Constants.STATUS_STOCK.equals(bean.getPackage_status()) && Constants.WHITE_STATUS_USE.equals(bean.getEmptyStatus()))
+        		|| (Constants.STATUS_ACTIVE.equals(bean.getPackage_status()) && Constants.WHITE_STATUS_USE.equals(bean.getEmptyStatus()))
+        		|| (Constants.STATUS_WHITE_EXCEED.equals(bean.getPackage_status()) && Constants.WHITE_STATUS_USE.equals(bean.getEmptyStatus())))
+        {
+        	//如果当前开卡套餐未开通或者为白卡套餐
+        	String redirect_url = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=" + appid + "&redirect_uri=" + baseUrl + "/html/api/router?action=openPackage&response_type=code&" + "scope=snsapi_base&state=" + keyWord + "#wechat_redirect";
+        	myMap.put("redirect_url", redirect_url);
+        }
+		return myMap;
+	}
+
+}

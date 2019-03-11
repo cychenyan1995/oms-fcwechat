@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.glsx.oms.fcwechat.biz.flowcard.mapper.PayLogMapper">
+
+	<insert id="insertLog"  parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.PayLog">
+		INSERT INTO flowmgn_pay_log(
+			create_time,
+			content,
+			status,
+			process_ret
+		) VALUES(
+			now(),
+			#{content},
+			#{status},
+			#{processRet}
+		)
+	</insert>
+</mapper>

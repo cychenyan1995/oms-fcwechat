@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Cache-control" content="no-cache">
+	<meta http-equiv="Cache" content="no-cache">
+    <title>流量查询</title>
+    <link rel="stylesheet" href="../../css/weui.min.css">
+    <link rel="stylesheet" href="../../css/jquery-weui.min.css">
+    <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+    <div id="bgImg" class="header-pic header-pic-query"></div>
+    <div class="weui-cells">
+        <div class="weui-cell">
+            <div class="weui-cell__bd">
+                <input id="query-input" type="tel" maxlength="32" pattern="[0-9]*" onkeyup="value=value.replace(/[^\d]/g,'')" class="weui-input" placeholder="请输入ICCID、IMSI、网卡号">
+            </div>
+        </div>
+    </div>
+    <div class="weui-btn-area">
+        <button id="comfirm" class="weui-btn weui-btn_primary" disabled>查询</button>
+    </div>
+    
+    <!-- body 最后 -->
+    <script src="../../js/libs/jqweui/jquery.min.js"></script>
+    <script src="../../js/libs/jqweui/jquery.cookie.js"></script>
+    <script src="../../js/libs/jqweui/jquery-weui.min.js"></script>
+    <script src="../../js/libs/jqweui/jquery.clearable.js "></script>
+    <script src="../../js/common.js" type="text/javascript"></script>
+	<script type="text/javascript" src="../../js/queryFlow/flowQuery.js"></script>
+	
+</body>
+
+</html>

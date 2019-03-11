@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.glsx.oms.fcwechat.biz.flowcard.mapper.FlowcardMapper">
+	<update id="updateOpenId" parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard" >
+		update flowmgn_flowcard  
+		set openid =#{openId}
+		where iccid = #{iccid}
+	</update>
+	
+	<update id="updateOpenIdNotify" parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard" >
+		update flowmgn_execute_notify  
+		set open_id =#{openId}
+		where iccid = #{iccid}
+	</update>
+	
+	<select id="getKeyword" parameterType="java.lang.String" resultType="java.lang.String">
+		SELECT bind_key FROM wechat_user WHERE wx_no = #{openId};
+	</select>
+	
+	<update id="updatePhoneNo" parameterType="com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard" >
+		update flowmgn_flowcard  
+		set phone_no =#{phoneNo}
+		where imsi = #{imsi}
+		   or iccid = #{imsi}
+		   or card_no = #{imsi} 
+	</update>
+	
+	<select id="getCardPackageInfo" parameterType="java.lang.String" resultType="com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard">
+		SELECT package_status,empty_status emptyStatus FROM flowmgn_flowcard WHERE imsi = #{imsi} or iccid = #{imsi} or card_no = #{imsi} 
+	</select>
+	
+</mapper>

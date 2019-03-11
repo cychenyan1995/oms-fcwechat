@@ -1,0 +1,364 @@
+package com.glsx.oms.fcwechat.biz.flowcard.controller;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
+import org.oreframework.common.lang.date.DateFormatConstants;
+import org.oreframework.common.lang.date.DateUtils;
+import org.oreframework.context.SpringContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.alibaba.dubbo.config.annotation.Reference;
+import com.glsx.biz.common.message.service.MessageService;
+import com.glsx.oms.fcservice.api.core.FlowResponse;
+import com.glsx.oms.fcservice.api.entity.FlowHisRecord;
+import com.glsx.oms.fcservice.api.entity.FlowRecord;
+import com.glsx.oms.fcservice.api.entity.Flowcard;
+import com.glsx.oms.fcservice.api.entity.FlowcardFlow;
+import com.glsx.oms.fcservice.api.manager.OpsMgrManager;
+import com.glsx.oms.fcservice.api.request.FlowCardRequest;
+import com.glsx.oms.fcservice.api.request.GetDealsHistory;
+import com.glsx.oms.fcservice.api.request.GetFlowHistoryRequest;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowRecords;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowserviceList;
+import com.glsx.oms.fcwechat.biz.flowcard.service.FlowcardService;
+import com.glsx.oms.fcwechat.biz.wechat.user.model.User;
+import com.glsx.oms.fcwechat.biz.wechat.user.service.UserService;
+
+@RestController
+public class FlowQueryController
+{
+    private static Logger logger = LoggerFactory.getLogger(FlowQueryController.class);
+    
+    @Reference(version = "2.2.0")
+    private MessageService messageService;
+    
+    @Autowired
+    private FlowcardService flowcardService;
+    
+    // 如果用@Reference注解版本号不能去掉
+ 	@Reference(version = "1.0.0")
+ 	private OpsMgrManager opsMgrManager;
+    
+    private FlowCard flowCard;
+    
+    private UserService  userService;
+    
+    private String getTodayBefore(String day)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, Integer.parseInt("-" + day));
+        Date date = calendar.getTime();
+        SimpleDateFormat format = new SimpleDateFormat(DateFormatConstants.DATE_FORMAT);
+        String dayBefore = format.format(date);
+        return dayBefore;
+    }
+    
+    private String getMonthBefore(String month)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.MONTH, Integer.parseInt("-" + month));
+        Date date = calendar.getTime();
+        SimpleDateFormat format = new SimpleDateFormat(DateFormatConstants.DATE_YEAE_MONTH);
+        String dayBefore = format.format(date);
+        return dayBefore;
+    }
+    
+    /**
+     * 取得当月天数
+     */
+    private static int getCurrentMonthLastDay()
+    {
+        Calendar a = Calendar.getInstance();
+        a.set(Calendar.DATE, 1);// 把日期设置为当月第一天
+        a.roll(Calendar.DATE, -1);// 日期回滚一天，也就是最后一天
+        int maxDate = a.get(Calendar.DATE);
+        return maxDate;
+    }
+    
+    @RequestMapping(value = "/api/getKeyword", method = {RequestMethod.POST, RequestMethod.GET})
+    public String getKeyword(HttpServletRequest request){
+    	String openId = (String) request.getSession().getAttribute("openId");
+		if (null == openId) {
+			logger.error("\n \n request.getSession() openId： {}", openId);
+			return null;
+		}
+		
+		String keyword = flowcardService.getKeyword(openId);
+		
+		if(null == keyword){
+			logger.error("\n \n flowcardService getKeyword： {}", keyword);
+			return null;
+		}
+		
+    	return keyword;
+    }
+    
+    /**
+     * keyWord 查询卡信息
+     * 
+     * @param session
+     * @return
+     * @throws Exception 
+     */
+    @RequestMapping(value = "/api/findFlowCardByKeyWord/{keyWord}/{selPkg}", method = {RequestMethod.POST,
+        RequestMethod.GET})
+    public Map<String, Object> findFlowCardByKeyWord(@PathVariable("keyWord") String keyWord,
+        @PathVariable("selPkg") boolean selPkg, HttpSession session,HttpServletRequest request)
+        throws Exception
+    {
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        
+        // 根据ICCID、IMSI、网卡号(三码)查询ICCID
+        FlowCardRequest flowCardRequest = new FlowCardRequest();
+		flowCardRequest.setKeyWord(keyWord);
+		flowCardRequest.setConsumer("oms-fcwechat");
+		flowCardRequest.setVersion("1.0.0");
+		flowCardRequest.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+		FlowResponse<Flowcard> flowcard = opsMgrManager.getCardIccid(flowCardRequest);
+        if ("1000".equals(flowcard.getCode()))
+        {
+            FlowCard fc = new FlowCard();
+            fc.setIccid(flowcard.getEntiy().getIccid());
+            fc.setImsi(flowcard.getEntiy().getImsi());
+            fc.setCardNo(flowcard.getEntiy().getCardNo());
+            fc.setImei(flowcard.getEntiy().getImei());
+            fc.setCardstatus(String.valueOf(flowcard.getEntiy().getCardStatus()));
+            fc.setIs_authname(String.valueOf(flowcard.getEntiy().getIsAuthname()));
+            fc.setOp_code(String.valueOf(flowcard.getEntiy().getOpCode()));
+            fc.setOwned(String.valueOf(flowcard.getEntiy().getOwned()));
+            fc.setPackage_status(String.valueOf(flowcard.getEntiy().getPackageStatus()));
+            
+            session.setAttribute("cardInfo", fc);
+            if (selPkg)
+            {
+            	String[] iccids = {fc.getIccid()};
+            	flowCardRequest.setIccids(iccids);
+            	FlowResponse<List<FlowcardFlow>> list = opsMgrManager.getCardFlow(flowCardRequest);
+                
+                if("1000".equals(list.getCode())){
+                    if(null != list.getEntiy() && 0 < list.getEntiy().size()){
+                        com.glsx.oms.fcservice.api.entity.FlowserviceList dList = list.getEntiy().get(0).getFlowservicelist().get(0);
+                        FlowserviceList flowList = new FlowserviceList();
+                        flowList.setEndtime(dList.getEndtime());
+                        flowList.setFlowserv_type(dList.getFlowserv_type());
+                        flowList.setFlowservicename(dList.getFlowservicename());
+                        flowList.setFlowtype(dList.getFlowservicetype());
+                        flowList.setIs_unlimit_flow(dList.getIs_unlimit_flow());
+                        flowList.setPackage_name(dList.getPackage_name());
+                        flowList.setRemainflow(dList.getRemainflow());
+                        flowList.setStarttime(dList.getStarttime());
+                        flowList.setStatus(dList.getStatus());
+                        flowList.setTotalflow(dList.getTotalflow());
+                        flowList.setUsedflow(dList.getUsedflow());;
+                        List<FlowserviceList> flowserviceList = new ArrayList<FlowserviceList>();
+                        flowserviceList.add(flowList);
+                        fc.setFlowserviceList(flowserviceList);
+                    }
+                }
+                
+                myMap.put("cardInfo", fc);
+                
+                //流量查询交互成功后，保存openId
+                String openId = (String)request.getSession().getAttribute("openId");
+                if (null == openId)
+                {
+                    logger.error("\n \n request.getSession() openId： {}", openId);
+                    return null;
+                }else{
+                	//保存openId
+                	fc.setOpenId(openId);
+                    flowcardService.updateOpenId(fc);
+                    flowcardService.updateOpenIdNotify(fc);
+                    
+                    //保存bind_key
+                    userService = (UserService) SpringContext.getBean("userService");
+                    User user = new User();
+                    user.setWxNo(openId);
+                    user.setBindKey(keyWord);
+                    userService.updateUserStatus(user);
+                }
+            }
+            else
+            {
+                myMap.put("cardInfo", fc);
+            }
+        }
+        
+        return myMap;
+    }
+    
+    /**
+     * 根据Iccid查询购买记录
+     * 
+     * @param session
+     * @param isapply
+     * @return
+     * @throws Exception 
+     */
+    @RequestMapping(value = "/api/flowRecords", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, Object> flowRecords(HttpSession session, int isapply) throws Exception
+    {
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        flowCard = (FlowCard)session.getAttribute("cardInfo");
+        GetDealsHistory dealsHistory = new GetDealsHistory();
+        dealsHistory.setImsi(flowCard.getImsi());
+        dealsHistory.setIsApply(isapply);
+        dealsHistory.setConsumer("oms-fcwechat");
+        dealsHistory.setVersion("1.0.0");
+        dealsHistory.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+        FlowResponse<List<FlowRecord>> list = opsMgrManager.getDealsHistory(dealsHistory);
+        logger.info("调用Iccid查询购买记录接口 list {}", list.getEntiy());
+        List<FlowRecords> flowRecordList = new ArrayList<FlowRecords>();
+        List<FlowRecord> listRecord = list.getEntiy();
+        if(null != listRecord && listRecord.size() > 0){
+            for (int i = 0; i < listRecord.size(); i++) {
+            	FlowRecords flowRecords = new FlowRecords(); 
+            	FlowRecord record = listRecord.get(i);
+            	flowRecords.setTotal_flow(String.valueOf(record.getTotal_flow()));
+            	flowRecords.setPer_cycle_flow(String.valueOf(record.getPer_cycle_flow()));
+            	flowRecords.setValid_cycle(record.getValid_cycle());
+            	flowRecords.setValid_cycle_unit(record.getValid_cycle_unit());
+            	flowRecords.setPktype(String.valueOf(record.getPktype()));
+            	flowRecords.setFlowserv_type(record.getFlowserv_type());
+            	flowRecords.setFlow_unit(record.getFlow_unit());
+            	flowRecords.setIsapply(record.getIsapply());
+            	flowRecords.setApply_time(record.getApply_time());
+            	flowRecords.setOrder_no(record.getOrder_no());
+            	flowRecords.setPkname(record.getPkname());
+            	flowRecords.setPktype(String.valueOf(record.getPktype()));
+            	flowRecords.setCreate_time(record.getCreate_time());
+            	flowRecords.setPkprice(String.valueOf(record.getPkprice()));
+            	flowRecordList.add(flowRecords);
+    		}
+        }
+        myMap.put("list", flowRecordList);
+        return myMap;
+    }
+    
+    /**
+     * 获取流量消耗报表数据
+     * 
+     * @param session
+     * @return
+     * @throws Exception 
+     */
+    @RequestMapping(value = "/api/flowUsedChart", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, Object> flowUsedChart(HttpSession session) throws Exception
+    {
+        flowCard = (FlowCard)session.getAttribute("cardInfo");
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        String startDate = null;
+        String endDate = null;
+        
+        // 日走势,30天的消耗流量
+        startDate = getTodayBefore("30");
+        endDate = DateUtils.getCurrentDate(DateFormatConstants.DATE_FORMAT);
+        GetFlowHistoryRequest flowHistoryRequest = new GetFlowHistoryRequest();
+        flowHistoryRequest.setIccid(flowCard.getIccid());
+        flowHistoryRequest.setType(0);
+        flowHistoryRequest.setBeginTime(startDate);
+        flowHistoryRequest.setEndTime(endDate);
+        flowHistoryRequest.setConsumer("oms-fcwechat");
+        flowHistoryRequest.setVersion("1.0.0");
+        flowHistoryRequest.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+        
+        FlowResponse<List<FlowHisRecord>> dailyData =
+            opsMgrManager.getFlowHistory(flowHistoryRequest);
+        
+        if("1000".equals(dailyData.getCode())){
+            Collections.reverse(dailyData.getEntiy());
+        }
+        myMap.put("dailyData", dailyData.getEntiy());
+        
+        // 月走势
+        startDate = getMonthBefore("6");
+        endDate = DateUtils.getCurrentDate(DateFormatConstants.DATE_YEAE_MONTH);
+        flowHistoryRequest.setType(1);
+        flowHistoryRequest.setBeginTime(startDate);
+        flowHistoryRequest.setEndTime(endDate);
+        FlowResponse<List<FlowHisRecord>> monthData =
+        		opsMgrManager.getFlowHistory(flowHistoryRequest);
+        if("1000".equals(monthData.getCode())){
+            Collections.reverse(monthData.getEntiy());
+        }
+        myMap.put("monthData", monthData.getEntiy());
+        
+        return myMap;
+        
+    }
+    
+    /**
+     * 获取流量消耗历史记录
+     * 
+     * @param session
+     * @return
+     * @throws Exception 
+     */
+    @RequestMapping(value = "/api/flowUsedDetail/{day}", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, Object> flowUsedDetail(HttpSession session, @PathVariable("day") String day) throws Exception
+    {
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        String endDate = DateUtils.getCurrentDate(DateFormatConstants.DATE_FORMAT);
+        String startDate = null;
+        List<FlowHisRecord> list = null;
+        String year = DateUtils.getCurrentDate("yyyy");
+        
+        GetFlowHistoryRequest flowHistoryRequest = new GetFlowHistoryRequest();
+        flowHistoryRequest.setIccid(flowCard.getIccid());
+        flowHistoryRequest.setType(0);
+        flowHistoryRequest.setConsumer("oms-fcwechat");
+        flowHistoryRequest.setVersion("1.0.0");
+        flowHistoryRequest.setTime(DateUtils.getCurrentDate(DateFormatConstants.TIMEF_FORMAT));
+        
+        // 30天的消耗流量
+        if ("30".equals(day))
+        {
+            String dayBefore = getTodayBefore(day);
+            startDate = dayBefore;
+            flowHistoryRequest.setBeginTime(startDate);
+            flowHistoryRequest.setEndTime(endDate);
+            list = opsMgrManager.getFlowHistory(flowHistoryRequest).getEntiy();
+        }
+        // 90天的消耗流量
+        if ("90".equals(day))
+        {
+            String dayBefore = getTodayBefore(day);
+            startDate = dayBefore;
+            flowHistoryRequest.setBeginTime(startDate);
+            flowHistoryRequest.setEndTime(endDate);
+            list = opsMgrManager.getFlowHistory(flowHistoryRequest).getEntiy();
+        }
+        // 全部，最大只能查询一年
+        if ("all".equals(day))
+        {
+            startDate = year + "-" + "01-01";
+            endDate = year + "-" + "12-31";
+            flowHistoryRequest.setBeginTime(startDate);
+            flowHistoryRequest.setEndTime(endDate);
+            list = opsMgrManager.getFlowHistory(flowHistoryRequest).getEntiy();
+        }
+        
+        flowCard = (FlowCard)session.getAttribute("cardInfo");
+        myMap.put("list", list);
+        return myMap;
+        
+    }
+    
+}

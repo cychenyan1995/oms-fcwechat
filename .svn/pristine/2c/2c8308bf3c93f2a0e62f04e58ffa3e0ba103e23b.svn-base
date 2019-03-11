@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.glsx.oms.fcwechat.biz.wechat.user.mapper.UserMapper">
+	<update id="updateUserStatus" parameterType="com.glsx.oms.fcwechat.biz.wechat.user.model.User">
+		update wechat_user set 
+		 <if test="status != null and status !=''" >  
+		  status=#{status},
+		 </if>
+		 <choose>
+		 	<when test="bindKey != null and bindKey !=''" >
+		 		bind_key=#{bindKey},
+		    </when>
+		     <otherwise>
+		     	bind_key='',
+		     </otherwise>
+		 </choose>
+		 <if test="rechargeUrl != null and rechargeUrl !=''" >  
+		  recharge_url=#{rechargeUrl},
+		 </if>
+		 update_time=now() where wx_no = #{wxNo}
+	</update>
+</mapper>

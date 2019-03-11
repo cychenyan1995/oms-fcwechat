@@ -1,0 +1,404 @@
+package com.glsx.oms.fcwechat.biz.flowcard.rop;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.glsx.oms.fcwechat.biz.flowcard.model.MsgLog;
+import com.glsx.oms.fcwechat.biz.flowcard.model.TemplateData;
+import com.glsx.oms.fcwechat.biz.flowcard.rop.request.SendChargeMsgRequest;
+import com.glsx.oms.fcwechat.biz.flowcard.rop.request.SendFlowMsgRequest;
+import com.glsx.oms.fcwechat.biz.flowcard.rop.request.SendMsgRequest;
+import com.glsx.oms.fcwechat.biz.flowcard.rop.request.SendPkgMsgRequest;
+import com.glsx.oms.fcwechat.biz.flowcard.rop.response.SendMsgResponse;
+import com.glsx.oms.fcwechat.biz.flowcard.service.MsgLogService;
+import com.glsx.oms.fcwechat.framework.config.MsgTemplateProperties;
+import com.glsx.oms.fcwechat.framework.config.WxToolsProperties;
+import com.rop.annotation.HttpAction;
+import com.rop.annotation.NeedInSessionType;
+import com.rop.annotation.ServiceMethod;
+import com.rop.annotation.ServiceMethodBean;
+import com.soecode.wxtools.api.IService;
+import com.soecode.wxtools.api.WxService;
+import com.soecode.wxtools.bean.TemplateSender;
+import com.soecode.wxtools.exception.WxErrorException;
+
+/**
+ * 微信消息模版发送接口Controller
+ */
+@ServiceMethodBean(version = "1.0.0", needInSession = NeedInSessionType.NO)
+public class WxSendMsgController
+{
+    
+    /**
+     * logger
+     */
+    protected final Logger logger = LoggerFactory.getLogger(WxSendMsgController.class);
+    
+    @Autowired
+    private WxToolsProperties wxToolsProperties;
+    
+    //模版配置
+    @Autowired
+    private MsgTemplateProperties msgTemplateProperties;
+    
+    //新建日志表
+    @Autowired
+    private MsgLogService msgLogService;
+    
+    /**
+     * 微信消息模版发送接口
+     * 
+     * @param req SendMsgRequest
+     * @return Object
+     * @throws Exception 异常
+     */
+    
+    @ServiceMethod(method = "glsx.fcwechat.api.sendMsg", needInSession = NeedInSessionType.NO)
+    public Object wxSendMsg(SendMsgRequest req)
+        throws Exception
+    {
+        SendMsgResponse response = new SendMsgResponse();
+        String openId = req.getOpenId();
+        String imsi = req.getImsi();
+        String iccid = req.getIccid();
+        String cardNo = req.getCardNo();
+        String isauth = req.getIsauth();
+        String fail_reason = req.getFail_reason();
+
+        MsgLog msgLog = new MsgLog();
+    	msgLog.setImsi(imsi);
+    	msgLog.setOpenId(openId);
+    	if(openId != null && imsi != null){
+    		IService service = new WxService();
+	        TemplateSender sender = new TemplateSender();
+	    	sender.setTemplate_id(wxToolsProperties.getTemplateId());
+	        sender.setTouser(openId);
+	        try
+	        {
+	        	 //消息模版数据
+	        	 Map<String, TemplateData> m = new HashMap<String, TemplateData>();
+	             TemplateData first = new TemplateData();
+	             first.setColor("#000000");
+	             first.setValue(msgTemplateProperties.getFirst());
+	             m.put("first", first);
+	             TemplateData keyword1 = new TemplateData();
+	             keyword1.setColor("#328392");
+	             keyword1.setValue(iccid);
+	             m.put("keyword1", keyword1);
+	             TemplateData keyword2 = new TemplateData();
+	             keyword2.setColor("#328392");
+	             keyword2.setValue(imsi);
+	             m.put("keyword2", keyword2);
+	             TemplateData keyword3 = new TemplateData();
+	             keyword3.setColor("#328392");
+	             keyword3.setValue(cardNo);
+	             m.put("keyword3", keyword3);
+	             TemplateData keyword4 = new TemplateData();
+	             keyword4.setColor("#328392");
+	             keyword4.setValue(isauth);
+	             m.put("keyword4", keyword4);
+	             TemplateData keyword5 = new TemplateData();
+	             keyword5.setColor("#328392");
+	             keyword5.setValue(fail_reason);
+	             m.put("keyword5", keyword5);
+	             TemplateData remark = new TemplateData();
+	             remark.setColor("#929232");
+	             remark.setValue(msgTemplateProperties.getRemark());
+	             m.put("remark", remark);
+	             sender.setData(m);
+	             sender.setUrl(null);
+	             service.templateSend(sender);
+	             
+	             response.setRetrunCode("0");
+	             response.setMessage("success");
+	             msgLog.setContent(isauth);
+	             msgLog.setFail_reason(fail_reason);
+	             logger.info("send message success imsi：{}",imsi);
+	        }
+	        catch (WxErrorException e)
+	        {
+	        	response.setRetrunCode("1");
+	        	response.setMessage("send message error imsi {}");
+	        	msgLog.setContent(isauth);
+	            msgLog.setFail_reason(fail_reason);
+	            logger.error("send message error imsi：{},{}",imsi,e);
+	            return response; 
+	        }
+    	}else{
+    		response.setMessage("imsi or openId is null");
+    		logger.error("imsi or openId is null");
+    		return response;
+    	}
+    	msgLogService.insertLog(msgLog);
+    	return response;
+ 
+    }
+    
+    /**
+     * 流量提醒
+     * @param req
+     * @return
+     * @throws Exception
+     * 2018年4月21日
+     * @author chenyan
+     */
+    @ServiceMethod(method = "glsx.fcwechat.api.sendRemainedFlowMessage", needInSession = NeedInSessionType.NO)
+    public Object sendRemainedFlowMessage(SendFlowMsgRequest req)
+        throws Exception
+    {
+    	logger.info("剩余流量提醒推送消息参数：" + req.toString());
+        SendMsgResponse response = new SendMsgResponse();
+        String openId = req.getOpenId();
+        String iccid = req.getIccid();
+        String imsi = req.getImsi();
+        String totalFlow = req.getTotalFlow();
+        String remainedFlow = req.getRemainedFlow();
+        String consumedFlow = req.getConsumedFlow();
+        String packageValid = req.getPackageValid();
+        String type = req.getType();
+        String nowTime = req.getNowTime();
+        String unit = req.getUnit();
+        
+        String remainedFlowInfo ="";
+		if("0".equals(type)){	//剩余流量已用完
+			remainedFlowInfo = "您好，截止"+nowTime+"，您的套餐流量已用完，流量卡即将停用，为不影响您的正常使用，请尽快充值流量；";
+		}else{	//剩余流量不足500M
+			remainedFlowInfo = "您好，截止"+nowTime+"，您的套餐流量已不足"+type+"M，为不影响您的正常使用，请尽快充值流量；";
+		}
+        
+        MsgLog msgLog = new MsgLog();
+    	msgLog.setImsi(imsi);
+    	msgLog.setOpenId(openId);
+    	if(openId != null && imsi != null){
+    		IService service = new WxService();
+	        TemplateSender sender = new TemplateSender();
+	    	sender.setTemplate_id(wxToolsProperties.getTemplateFlowId());
+	        sender.setTouser(openId);
+	        try
+	        {
+	        	 //消息模版数据
+	        	 Map<String, TemplateData> m = new HashMap<String, TemplateData>();
+	             TemplateData first = new TemplateData();
+	             first.setColor("#000000");
+	             first.setValue(remainedFlowInfo);
+	             m.put("first", first);
+	             TemplateData keyword1 = new TemplateData();
+	             keyword1.setColor("#328392");
+	             keyword1.setValue(iccid);
+	             m.put("keyword1", keyword1);
+	             TemplateData keyword2 = new TemplateData();
+	             keyword2.setColor("#328392");
+	             keyword2.setValue(totalFlow+unit);
+	             m.put("keyword2", keyword2);
+	             TemplateData keyword3 = new TemplateData();
+	             keyword3.setColor("#328392");
+	             keyword3.setValue(remainedFlow+unit);
+	             m.put("keyword3", keyword3);
+	             TemplateData keyword4 = new TemplateData();
+	             keyword4.setColor("#328392");
+	             keyword4.setValue(consumedFlow+unit);
+	             m.put("keyword4", keyword4);
+	             TemplateData keyword5 = new TemplateData();
+	             keyword5.setColor("#328392");
+	             keyword5.setValue(packageValid);
+	             m.put("keyword5", keyword5);
+	             TemplateData remark = new TemplateData();
+	             remark.setColor("#929232");
+	             remark.setValue(msgTemplateProperties.getRemarkFlow());
+	             m.put("remark", remark);
+	             sender.setData(m);
+	             sender.setUrl(null);
+	             service.templateSend(sender);
+	             
+	             response.setRetrunCode("0");
+	             response.setMessage("success");
+	             msgLog.setContent(remainedFlowInfo);
+	             logger.info("send message success imsi：{}",imsi);
+	        }
+	        catch (WxErrorException e)
+	        {
+	        	response.setRetrunCode("1");
+	        	response.setMessage("send message error imsi {}");
+	        	msgLog.setContent(remainedFlowInfo);
+	            logger.error("send message error imsi：{},{}",imsi,e);
+	            return response; 
+	        }
+    	}else{
+    		response.setMessage("imsi or openId is null");
+    		logger.error("imsi or openId is null");
+    		return response;
+    	}
+    	msgLogService.insertLog(msgLog);
+    	return response;
+ 
+    }
+    
+    /**
+     * 套餐有效期提醒
+     * @param req
+     * @return
+     * @throws Exception
+     * 2018年4月21日
+     * @author chenyan
+     */
+    @ServiceMethod(method = "glsx.fcwechat.api.sendPkgValidInfoMessage", needInSession = NeedInSessionType.NO)
+    public Object sendPkgValidInfoMessage(SendPkgMsgRequest req)
+        throws Exception
+    {
+    	logger.info("套餐有效期提醒推送消息参数：" + req.toString());
+        SendMsgResponse response = new SendMsgResponse();
+        String openId = req.getOpenId();
+        String pkgEndTime = req.getPkgEndTime();
+        String pkgType = req.getPkgType();
+        pkgType = java.net.URLDecoder.decode(pkgType,"UTF-8");
+        String imsi = req.getImsi();
+        String remainedDays = req.getRemainedDays();
+        //当天也算一天
+        Integer remaineddays = Integer.parseInt(remainedDays);
+        remaineddays = remaineddays + 1;
+        String pkgInfo ="您好，您的服务"+remaineddays+"天后将到期；";
+
+
+        MsgLog msgLog = new MsgLog();
+    	msgLog.setImsi(imsi);
+    	msgLog.setOpenId(openId);
+    	if(openId != null && imsi != null){
+    		IService service = new WxService();
+	        TemplateSender sender = new TemplateSender();
+	    	sender.setTemplate_id(wxToolsProperties.getTemplatePkgId());
+	        sender.setTouser(openId);
+	        try
+	        {
+	        	 //消息模版数据
+	        	 Map<String, TemplateData> m = new HashMap<String, TemplateData>();
+	             TemplateData first = new TemplateData();
+	             first.setColor("#000000");
+	             first.setValue(pkgInfo);
+	             m.put("first", first);
+	             TemplateData keyword1 = new TemplateData();
+	             keyword1.setColor("#328392");
+	             keyword1.setValue(pkgType);
+	             m.put("keyword1", keyword1);
+	             TemplateData keyword2 = new TemplateData();
+	             keyword2.setColor("#328392");
+	             keyword2.setValue(pkgEndTime);
+	             m.put("keyword2", keyword2);
+	             TemplateData remark = new TemplateData();
+	             remark.setColor("#929232");
+	             remark.setValue(msgTemplateProperties.getRemarkPkg());
+	             m.put("remark", remark);
+	             sender.setData(m);
+	             sender.setUrl(null);
+	             service.templateSend(sender);
+	             
+	             response.setRetrunCode("0");
+	             response.setMessage("success");
+	             msgLog.setContent(pkgInfo);
+	             logger.info("send message success imsi：{}",imsi);
+	        }
+	        catch (WxErrorException e)
+	        {
+	        	response.setRetrunCode("1");
+	        	response.setMessage("send message error imsi {}");
+	        	msgLog.setContent(pkgInfo);
+	            logger.error("send message error imsi：{},{}",imsi,e);
+	            return response; 
+	        }
+    	}else{
+    		response.setMessage("imsi or openId is null");
+    		logger.error("imsi or openId is null");
+    		return response;
+    	}
+    	msgLogService.insertLog(msgLog);
+    	return response;
+ 
+    }
+    
+    /**
+     * 充值成功提醒
+     * @param req
+     * @return
+     * @throws Exception
+     * 2018年4月21日
+     * @author chenyan
+     */
+    @ServiceMethod(method = "glsx.fcwechat.api.sendChargeInfoMessage", needInSession = NeedInSessionType.NO)
+    public Object sendChargeInfoMessage(SendChargeMsgRequest req)
+        throws Exception
+    {
+    	logger.info("充值成功提醒推送消息参数：" + req.toString());
+        SendMsgResponse response = new SendMsgResponse();
+        String openId = req.getOpenId();
+        String imsi = req.getImsi();
+        String orderNo = req.getOrderNo();
+        String chargePkg = req.getChargePkg();
+        String iccid = req.getIccid();
+        String price = req.getPrice()+"元";
+
+        MsgLog msgLog = new MsgLog();
+    	msgLog.setImsi(imsi);
+    	msgLog.setOpenId(openId);
+    	if(openId != null && imsi != null){
+    		IService service = new WxService();
+	        TemplateSender sender = new TemplateSender();
+	    	sender.setTemplate_id(wxToolsProperties.getTemplateChargeId());
+	        sender.setTouser(openId);
+	        try
+	        {
+	        	 //消息模版数据
+	        	 Map<String, TemplateData> m = new HashMap<String, TemplateData>();
+	             TemplateData first = new TemplateData();
+	             first.setColor("#000000");
+	             first.setValue(msgTemplateProperties.getFirstCharge());
+	             m.put("first", first);
+	             TemplateData keyword1 = new TemplateData();
+	             keyword1.setColor("#328392");
+	             keyword1.setValue(orderNo);
+	             m.put("keyword1", keyword1);
+	             TemplateData keyword2 = new TemplateData();
+	             keyword2.setColor("#328392");
+	             keyword2.setValue(iccid);
+	             m.put("keyword2", keyword2);
+	             TemplateData keyword3 = new TemplateData();
+	             keyword3.setColor("#328392");
+	             keyword3.setValue(chargePkg);
+	             m.put("keyword3", keyword3);
+	             TemplateData keyword4 = new TemplateData();
+	             keyword4.setColor("#328392");
+	             keyword4.setValue(price);
+	             m.put("keyword4", keyword4);
+	             TemplateData remark = new TemplateData();
+	             remark.setColor("#929232");
+	             remark.setValue(msgTemplateProperties.getRemarkCharge());
+	             m.put("remark", remark);
+	             sender.setData(m);
+	             sender.setUrl(null);
+	             service.templateSend(sender);
+	             
+	             response.setRetrunCode("0");
+	             response.setMessage("success");
+	             msgLog.setContent("充值成功推送");
+	             logger.info("send message success imsi：{}",imsi);
+	        }
+	        catch (WxErrorException e)
+	        {
+	        	response.setRetrunCode("1");
+	        	response.setMessage("send message error imsi {}");
+	        	msgLog.setContent("充值成功推送");
+	            logger.error("send message error imsi：{},{}",imsi,e);
+	            return response; 
+	        }
+    	}else{
+    		response.setMessage("imsi or openId is null");
+    		logger.error("imsi or openId is null");
+    		return response;
+    	}
+    	msgLogService.insertLog(msgLog);
+    	return response;
+ 
+    }
+}

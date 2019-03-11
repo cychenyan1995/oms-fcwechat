@@ -1,0 +1,232 @@
+package com.glsx.oms.fcwechat.biz.flowcard.controller;
+
+import java.io.UnsupportedEncodingException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpSession;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.ListUtils;
+import org.apache.commons.collections.MapUtils;
+import org.oreframework.common.lang.date.DateCalculation;
+import org.oreframework.common.lang.date.DateFormatConstants;
+import org.oreframework.common.lang.date.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.alibaba.dubbo.config.annotation.Reference;
+import com.glsx.biz.common.message.service.MessageService;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowConsumeDetail;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowRecords;
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowserviceList;
+import com.glsx.oms.fcwechat.biz.flowcard.util.HttpUtils;
+import com.glsx.oms.fcwechat.framework.config.StaticProperty;
+
+@RestController
+public class FlowQueryController
+{
+    private static Logger logger = LoggerFactory.getLogger(FlowQueryController.class);
+    
+    @Reference(version = "2.2.0")
+    private MessageService messageService;
+    
+    @Autowired
+    private StaticProperty staticProperty;
+    
+    private FlowCard flowCard;
+    
+    private HttpUtils httpUtils = new HttpUtils();
+    
+    private String getTodayBefore(String day)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, Integer.parseInt("-" + day));
+        Date date = calendar.getTime();
+        SimpleDateFormat format = new SimpleDateFormat(DateFormatConstants.DATE_FORMAT);
+        String dayBefore = format.format(date);
+        return dayBefore;
+    }
+    
+    private String getMonthBefore(String month)
+    {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.MONTH, Integer.parseInt("-" + month));
+        Date date = calendar.getTime();
+        SimpleDateFormat format = new SimpleDateFormat(DateFormatConstants.DATE_YEAE_MONTH);
+        String dayBefore = format.format(date);
+        return dayBefore;
+    }
+    
+    /**
+     * 取得当月天数
+     */
+    private static int getCurrentMonthLastDay()
+    {
+        Calendar a = Calendar.getInstance();
+        a.set(Calendar.DATE, 1);// 把日期设置为当月第一天
+        a.roll(Calendar.DATE, -1);// 日期回滚一天，也就是最后一天
+        int maxDate = a.get(Calendar.DATE);
+        return maxDate;
+    }
+    
+    /**
+     * keyWord 查询卡信息
+     * 
+     * @param session
+     * @return
+     * @throws KeyManagementException
+     * @throws NoSuchAlgorithmException
+     * @throws UnsupportedEncodingException
+     */
+    @RequestMapping(value = "/api/findFlowCardByKeyWord/{keyWord}/{selPkg}", method = {RequestMethod.POST,
+        RequestMethod.GET})
+    public Map<String, Object> findFlowCardByKeyWord(@PathVariable("keyWord") String keyWord,
+        @PathVariable("selPkg") boolean selPkg, HttpSession session)
+        throws KeyManagementException, NoSuchAlgorithmException, UnsupportedEncodingException
+    {
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        
+        // 根据ICCID、IMSI、网卡号(三码)查询ICCID
+        flowCard = httpUtils.getCardIccid(keyWord, staticProperty);
+        if (flowCard != null)
+        {
+            session.setAttribute("cardInfo", flowCard);
+            if (selPkg)
+            {
+                FlowCard fc = httpUtils.getCardFlow(flowCard, staticProperty);
+                fc.setIccid(flowCard.getIccid());
+                fc.setImsi(flowCard.getImsi());
+                fc.setCardNo(flowCard.getCardNo());
+                fc.setCardstatus(flowCard.getCardstatus());
+                fc.setIs_authname(flowCard.getIs_authname());
+                fc.setOp_code(flowCard.getOp_code());
+                fc.setPackage_status(flowCard.getPackage_status());
+                myMap.put("cardInfo", fc);
+            }
+            else
+            {
+                myMap.put("cardInfo", flowCard);
+            }
+        }
+        
+        return myMap;
+    }
+    
+    /**
+     * 根据Iccid查询购买记录
+     * 
+     * @param session
+     * @param isapply
+     * @return
+     */
+    @RequestMapping(value = "/api/flowRecords", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, Object> flowRecords(HttpSession session, int isapply)
+    {
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        flowCard = (FlowCard)session.getAttribute("cardInfo");
+        List<FlowRecords> list = httpUtils.getDealsHistory(flowCard.getImsi(), isapply, staticProperty);
+        logger.info("调用Iccid查询购买记录接口 list {}", list);
+        myMap.put("list", list);
+        return myMap;
+    }
+    
+    /**
+     * 获取流量消耗报表数据
+     * 
+     * @param session
+     * @return
+     */
+    @RequestMapping(value = "/api/flowUsedChart", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, Object> flowUsedChart(HttpSession session)
+    {
+        flowCard = (FlowCard)session.getAttribute("cardInfo");
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        String startDate = null;
+        String endDate = null;
+        
+        // 日走势,30天的消耗流量
+        startDate = getTodayBefore("30");
+        endDate = DateUtils.getCurrentDate(DateFormatConstants.DATE_FORMAT);
+        List<FlowConsumeDetail> dailyData =
+            httpUtils.getFlowHistory(flowCard.getIccid(), 0, startDate, endDate, staticProperty);
+        if(null != dailyData){
+            Collections.reverse(dailyData);
+        }
+        myMap.put("dailyData", dailyData);
+        
+        // 月走势
+        startDate = getMonthBefore("6");
+        endDate = DateUtils.getCurrentDate(DateFormatConstants.DATE_YEAE_MONTH);
+        List<FlowConsumeDetail> monthData =
+            httpUtils.getFlowHistory(flowCard.getIccid(), 1, startDate, endDate, staticProperty);
+        if(null != monthData){
+            Collections.reverse(monthData);
+        }
+        myMap.put("monthData", monthData);
+        
+        return myMap;
+        
+    }
+    
+    /**
+     * 获取流量消耗历史记录
+     * 
+     * @param session
+     * @return
+     */
+    @RequestMapping(value = "/api/flowUsedDetail/{day}", method = {RequestMethod.POST, RequestMethod.GET})
+    public Map<String, Object> flowUsedDetail(HttpSession session, @PathVariable("day") String day)
+    {
+        Map<String, Object> myMap = new HashMap<String, Object>();
+        String endDate = DateUtils.getCurrentDate(DateFormatConstants.DATE_FORMAT);
+        String startDate = null;
+        List<FlowConsumeDetail> list = null;
+        String year = DateUtils.getCurrentDate("yyyy");
+        
+        // 30天的消耗流量
+        if ("30".equals(day))
+        {
+            String dayBefore = getTodayBefore(day);
+            startDate = dayBefore;
+            list = httpUtils.getFlowHistory(flowCard.getIccid(), 0, startDate, endDate, staticProperty);
+        }
+        // 90天的消耗流量
+        if ("90".equals(day))
+        {
+            String dayBefore = getTodayBefore(day);
+            startDate = dayBefore;
+            
+            list = httpUtils.getFlowHistory(flowCard.getIccid(), 0, startDate, endDate, staticProperty);
+        }
+        // 全部，最大只能查询一年
+        if ("all".equals(day))
+        {
+            startDate = year + "-" + "01-01";
+            endDate = year + "-" + "12-31";
+            list = httpUtils.getFlowHistory(flowCard.getIccid(), 0, startDate, endDate, staticProperty);
+        }
+        
+        flowCard = (FlowCard)session.getAttribute("cardInfo");
+        myMap.put("list", list);
+        return myMap;
+        
+    }
+    
+}

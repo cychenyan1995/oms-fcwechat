@@ -1,0 +1,28 @@
+package com.glsx.oms.fcwechat;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.soecode.wxtools.api.IService;
+import com.soecode.wxtools.api.WxService;
+import com.soecode.wxtools.exception.WxErrorException;
+
+public class WxAccessTokenTest {
+
+	private final static Logger logger = LoggerFactory.getLogger(WxAccessTokenTest.class);
+	private IService service = new WxService();
+	
+	@Test
+	public void getAccessToken(){
+		try {
+			String accessToken = service.getAccessToken();
+			//2VsC0lmD5l5tFOUdboGgq4uPs5e5RSn2wGD5qSVo5NSQFeeA-gc3tyrNySFD9AgDskRAODyHuCRcofp4t_FNFm5JWKx5qor2lR4PDmzDYCLiS9xTYfcoI6t662W_WxwWNTDiAAAXDN
+			logger.info("------------------------------>"+accessToken);
+			Assert.assertNotNull(accessToken);
+		} catch (WxErrorException e) {
+			e.printStackTrace();
+		}
+	}
+}

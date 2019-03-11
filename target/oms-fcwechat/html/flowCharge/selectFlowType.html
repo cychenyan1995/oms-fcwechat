@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>选择流量套餐</title>
+    <link rel="stylesheet" href="../../css/weui.min.css">
+	<link rel="stylesheet" href="../../css/jquery-weui.min.css">
+	<link rel="stylesheet" href="../../css/style.css">
+</head>
+
+<body>
+    <input type="hidden" id="flowpkgtype">
+	<input type="hidden" id="relation_id">
+	<input type="hidden" id="pkgdesc">
+	<input type="hidden" id="validCycle">
+	<input type="hidden" id="flowTitle">
+	<input type="hidden" id="flowTypeName">
+	<input type="hidden" id="validDes">
+	<input type="hidden" id="pay_date">
+	<input type="hidden" id="month_clean">
+	
+    <!-- 容器 -->
+    <div class="weui-tab">
+    	<div class="box-flow-info" id="nonPkg">没有可续费的套餐!</div>
+        <div class="weui-navbar">
+            <a class="weui-navbar__item" href="#tab1" id="flowPkg">
+                <span class="title">累计套餐</span>
+            </a>
+            <a class="weui-navbar__item" href="#tab2" id="monthPkg">
+                <span class="title">月付套餐</span>
+            </a>
+            <a class="weui-navbar__item" href="#tab3" id="cumulativePkg">
+                <span class="title">累计流量包</span>
+            </a>
+        </div>
+        <div class="weui-tab__bd">
+            <div id="tab1" class="weui-tab__bd-item weui-tab__bd-item--active">
+                <div class="weui-panel weui-panel_grid">
+                    <div class="weui-panel__hd">
+                        <span class="text-primary"></span>
+                        <span class="text-pay pull-right">120元</span>
+                    </div>
+                    <div class="weui-panel__bd">
+                        <div class="weui-form-preview">
+                            <div class="weui-form-preview__bd">
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">套餐名称:</label>
+                                    <span class="weui-form-preview__value" id="packName">套餐名称套餐名称套餐名称套餐名称</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">流量细则:</label>
+                                    <span class="weui-form-preview__value" id="flow">1G</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label" >有效期限:</label>
+                                    <span class="weui-form-preview__value" id="valid_cycle">1年</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">生效规则:</label>
+                                    <span class="weui-form-preview__value" id='valid_des'>立即生效，流量叠加，总使用周期延长</span>
+                                </div>
+                            </div>
+                            <div class="weui-form-preview__ft after-none">
+                                <button parent="tab1" type="button" class="weui-btn weui-btn_inline weui-btn_primary" href="javascript:">立即购买</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="tab2" class="weui-tab__bd-item">
+                <div class="weui-panel weui-panel_grid">
+                    <div class="weui-panel__hd">
+                        <span class="text-primary"></span>
+                        <span class="text-pay pull-right">120元</span>
+                    </div>
+                    <div class="weui-panel__bd">
+                        <div class="weui-form-preview">
+                           <div class="weui-form-preview__bd">
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">套餐名称:</label>
+                                    <span class="weui-form-preview__value" id="packName">套餐名称套餐名称套餐名称套餐名称</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">流量细则:</label>
+                                    <span class="weui-form-preview__value" id="flow">1G</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label" >有效期限:</label>
+                                    <span class="weui-form-preview__value" id="valid_cycle">1年</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label" >月付时间:</label>
+                                    <span class="weui-form-preview__value" id="flowserv_pay_date">每月1日</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label" >清零规则:</label>
+                                    <span class="weui-form-preview__value" id="is_month_clean">月底清零</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">生效规则:</label>
+                                    <span class="weui-form-preview__value" id='valid_des'>当前套餐结束后生效</span>
+                                </div>
+                            </div>
+                            <div class="weui-form-preview__ft after-none">
+                                <button parent="tab2" type="button" class="weui-btn weui-btn_inline weui-btn_primary" href="javascript:">立即购买</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab3" class="weui-tab__bd-item">
+                <div class="weui-panel weui-panel_grid">
+                    <div class="weui-panel__hd">
+                        <span class="text-primary"></span>
+                        <span class="text-pay pull-right">120元</span>
+                    </div>
+                    <div class="weui-panel__bd">
+                        <div class="weui-form-preview">
+                            <div class="weui-form-preview__bd">
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">套餐名称:</label>
+                                    <span class="weui-form-preview__value" id="packName">套餐名称套餐名称套餐名称套餐名称</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">流量细则:</label>
+                                    <span class="weui-form-preview__value" id="flow">1G</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label" >有效期限:</label>
+                                    <span class="weui-form-preview__value" id="valid_cycle">1年</span>
+                                </div>
+                                <div class="weui-form-preview__item">
+                                    <label class="weui-form-preview__label">生效规则:</label>
+                                    <span class="weui-form-preview__value" id='valid_des'>立即生效，流量叠加，30天内有效，总使用周期不变</span>
+                                </div>
+                            </div>
+                            <div class="weui-form-preview__ft after-none">
+                                <button parent="tab3" type="button" class="weui-btn weui-btn_inline weui-btn_primary" href="javascript:">立即购买</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+        <script src="../../js/libs/jqweui/jquery.min.js"></script>
+		<script src="../../js/libs/jqweui/jquery-weui.min.js"></script>
+		<script src="../../js/common.js" type="text/javascript"></script>
+				<script type="text/javascript" src="../../js/flowCharge/selectFlowType.js"></script>
+		
+	        <script type="text/javascript">
+            $('.weui-panel_grid').click(function() {
+                $(this).toggleClass('open');
+            });
+        </script>
+</body>
+
+</html>

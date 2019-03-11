@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Cache-control" content="no-cache">
+<meta http-equiv="Cache" content="no-cache">
+<title>流量查询</title>
+<link rel="stylesheet" href="../../css/weui.min.css">
+<link rel="stylesheet" href="../../css/jquery-weui.min.css">
+<link rel="stylesheet" href="../../css/style.css">
+</head>
+
+<body class="fixed-filler">
+	<div class="weui-panel weui-panel_detail">
+		<div class="weui-panel__hd">卡号信息</div>
+		<div class="weui-panel__bd">
+			<div class="weui-cells">
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>运营商</p>
+					</div>
+					<div class="weui-cell__ft">
+						<i class="weui-icon weui-icon-union"></i> 中国联通
+					</div>
+				</div>
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>ICCID</p>
+					</div>
+					<div class="weui-cell__ft" id="iccid">说明文字</div>
+				</div>
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>IMSI</p>
+					</div>
+					<div class="weui-cell__ft" id="imsi">说明文字</div>
+				</div>
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>网卡号</p>
+					</div>
+					<div class="weui-cell__ft" id="cardNo">说明文字</div>
+				</div>
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>卡状态</p>
+					</div>
+					<div class="weui-cell__ft">
+						<i class="weui-icon" id="status"></i>
+					</div>
+				</div>
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>套餐状态</p>
+					</div>
+					<div class="weui-cell__ft" id="pkg_status">
+					</div>
+				</div>
+				<div class="weui-cell">
+					<div class="weui-cell__bd">
+						<p>实名认证</p>
+					</div>
+					<div class="weui-cell__ft" id="realname_status">
+					</div>
+				</div>
+				
+				<!-- <div class="weui-cell">
+                    <div class="weui-cell__bd">
+                        <p>在线</p>
+                    </div>
+                    <div class="weui-cell__ft color-primary">是</div>
+                </div> -->
+			</div>
+		</div>
+	</div>
+
+	<!-- <div class="weui-panel weui-panel_access weui-panel_detail">
+        <div class="weui-panel__hd">流量信息</div>
+        <div class="weui-panel__bd" id="myFlowInfor"></div>
+    </div>  -->
+
+	<div class="weui-panel weui-panel_detail">
+		<div class="weui-panel__hd">流量信息</div>
+		<div class="weui-panel__bd" id="myFlowInfor">
+			<div class="box-flow-info" style="display: none">
+				<div class="box-hd">
+					<div class="box-title">package_name</div>
+				</div>
+				<div class="box-bd">
+					<div class="text-desc text-left">
+						<div>
+							剩余：<span class="text-primary"></span><span class="separate-line" name="totalflow">|</span>
+						</div>
+						<div name="endtime"></div>
+					</div>
+					<!-- <div class="text-desc pull-left" name="endtime"></div> -->
+					<div class="weui-progress">
+						<div class="weui-progress__bar">
+							<span class="percent" style="left: 0%"></span>
+							<div class="weui-progress__inner-bar js_progress" style="width: 0%;"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="weui-panel weui-panel_detail">
+		<div class="weui-panel__hd">流量使用趋势 
+		<a href="javascript:;" class="pull-right link" id="detailList">流量明细</a></div>
+		<div class="weui-panel__bd">
+			<div class="chart-wrapper">
+				<div class="weui-btn-group" id="chartChange" role="group">
+					<button class="weui-btn weui-btn_plain-primary weui-btn_mini active" type="button">日走势</button>
+					<button class="weui-btn weui-btn_plain-primary weui-btn_mini" type="button">月走势</button>
+				</div>
+	        	<div class="no_data">
+	        		<div>暂无流量数据</div>
+	        	</div>
+	        	<div id="chart" class="mapContainer"></div>
+			</div>
+		</div>
+	</div>
+
+	<div class="weui-btn-area weui-flex fixed">
+		<div class="weui-flex__item">
+			<a id="btn-purchasingRecords" href="javascript:flowRecords();" class="weui-btn weui-btn_plain-primary mr5">购买记录</a>
+		</div>
+		<div class="weui-flex__item">
+			<a href="javascript:gotoBuyFlow();" id="btn-purchasingRecords " class="weui-btn weui-btn_primary ml5 ">流量充值</a>
+		</div>
+	</div>
+
+	<script src="../../js/libs/jqweui/jquery.min.js"></script>
+	<script src="../../js/libs/jqweui/jquery-weui.min.js"></script>
+	<script src="../../js/libs/echarts3/echarts.min.js"></script>
+	<script src="../../js/common.js" type="text/javascript"></script>
+	<script type="text/javascript" src="../../js/queryFlow/flowDetail.js"></script>
+	<script type="text/javascript" src="../../js/queryFlow/chart.js"></script>
+	<script>
+		
+	</script>
+</body>
+
+</html>

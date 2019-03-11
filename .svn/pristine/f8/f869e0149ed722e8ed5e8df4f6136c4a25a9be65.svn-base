@@ -1,0 +1,167 @@
+
+package com.glsx.oms;
+
+import java.util.Date;
+
+import org.junit.Test;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import com.glsx.oms.fcwechat.biz.flowcard.rop.request.ExampleRequest;
+import com.glsx.oms.fcwechat.biz.flowcard.rop.response.ExampleResponse;
+import com.rop.client.ClientRequest;
+import com.rop.client.DefaultRopClient;
+import com.rop.utils.RopUtils;
+
+
+/**
+ * <pre>
+ * 功能说明：
+ * </pre>
+ *
+ * @author 陈雄华
+ * @version 1.0
+ */
+public class ExampleClient {
+
+    public static final String SERVER_URL = "http://localhost:8888/fcwechat/router";
+    public static final String APP_KEY = "48e5e13229b82c1b4e6e8c96151f0637";
+    public static final String APP_SECRET = "c24619ed7fef02a0ae16328146bca5f97cc6493957a2137b";
+    private DefaultRopClient ropClient = new DefaultRopClient(SERVER_URL, APP_KEY, APP_SECRET);
+
+    {
+        ropClient.setFormatParamName("messageFormat");
+       
+    }
+
+  
+    @Test
+    public void testExample() {
+        ClientRequest cr = ropClient.buildClientRequest();
+        cr.addParam("messageFormat", "json");
+        cr.post(new ExampleRequest(), ExampleResponse.class, "org.ore.api.example", "1.0.0");
+
+    }
+    
+    @Test
+    public void testExample1() {
+        RestTemplate restTemplate = new RestTemplate();
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<String, String>();
+        form.add("method", "org.ore.api.example");// <--指定方法名称
+        form.add("appKey", "48e5e13229b82c1b4e6e8c96151f0637");
+        form.add("v", "1.0.0");
+        form.add("sessionId", "mockSessionId1");
+        form.add("messageFormat", "json");
+        form.add("timestamp", String.valueOf(new Date().getTime()));
+
+        //对请求参数列表进行签名
+        String sign = RopUtils.sign(form.toSingleValueMap(), "c24619ed7fef02a0ae16328146bca5f97cc6493957a2137b");
+        form.add("sign", sign);
+        String response = restTemplate.postForObject(
+                SERVER_URL, form, String.class);
+        System.out.println("response:\n" + response);
+    }
+    
+    @Test
+    public void testWxSendMsg() {
+        RestTemplate restTemplate = new RestTemplate();
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<String, String>();
+        form.add("method", "glsx.fcwechat.api.sendMsg");//<--指定方法名称
+        form.add("appKey", "48e5e13229b82c1b4e6e8c96151f0637");
+        form.add("v", "1.0.0");
+        form.add("sessionId", "mockSessionId1");
+        form.add("messageFormat", "json");
+        form.add("openId", "oJGDQwQG0haUW4gJPSICAKAjGKlg");
+        form.add("imsi", "110000");
+        form.add("iccid", "110000");
+        form.add("cardNo", "110000");
+        form.add("isauth", "1");
+        form.add("fail_reason", "11111000");
+        
+
+        //对请求参数列表进行签名
+        String sign = RopUtils.sign(form.toSingleValueMap(), "c24619ed7fef02a0ae16328146bca5f97cc6493957a2137b");
+        form.add("sign", sign);
+        String response = restTemplate.postForObject(
+                SERVER_URL, form, String.class);
+        System.out.println("response:\n" + response);
+    }
+    
+    @Test
+    public void testSendRemainedFlowMessage() {
+        RestTemplate restTemplate = new RestTemplate();
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<String, String>();
+        form.add("method", "glsx.fcwechat.api.sendRemainedFlowMessage");//<--指定方法名称
+        form.add("appKey", "48e5e13229b82c1b4e6e8c96151f0637");
+        form.add("v", "1.0.0");
+        form.add("sessionId", "mockSessionId1");
+        form.add("messageFormat", "json");
+        form.add("openId", "oJGDQwX3wFSihqT5MzHRE_JZ1MBY");
+        form.add("imsi", "460060082076516");
+        form.add("iccid", "467067001067327");
+        form.add("type", "1G");
+        form.add("nowTime", "2018-04-26");
+        form.add("totalFlow", "2048");
+        form.add("remainedFlow", "500");
+        form.add("consumedFlow", "1548");
+        form.add("unit", "M");
+        form.add("packageValid", "2018-10-23");
+        
+        //对请求参数列表进行签名
+        String sign = RopUtils.sign(form.toSingleValueMap(), "c24619ed7fef02a0ae16328146bca5f97cc6493957a2137b");
+        form.add("sign", sign);
+        System.out.println(sign);
+        String response = restTemplate.postForObject(
+                SERVER_URL, form, String.class);
+        System.out.println("response:\n" + response);
+    }
+    
+    @Test
+    public void testSendPkgValidInfoMessage() {
+        RestTemplate restTemplate = new RestTemplate();
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<String, String>();
+        form.add("method", "glsx.fcwechat.api.sendPkgValidInfoMessage");//<--指定方法名称
+        form.add("appKey", "48e5e13229b82c1b4e6e8c96151f0637");
+        form.add("v", "1.0.0");
+        form.add("sessionId", "mockSessionId1");
+        form.add("messageFormat", "json");
+        form.add("openId", "oJGDQwX3wFSihqT5MzHRE_JZ1MBY");
+        form.add("imsi", "460060082076516");
+        form.add("remainedDays", "7");
+        form.add("pkgEndTime", "2018-04-26");
+        form.add("pkgType", "流量服务套餐");
+        
+        //对请求参数列表进行签名
+        String sign = RopUtils.sign(form.toSingleValueMap(), "c24619ed7fef02a0ae16328146bca5f97cc6493957a2137b");
+        form.add("sign", sign);
+        String response = restTemplate.postForObject(
+                SERVER_URL, form, String.class);
+        System.out.println("response:\n" + response);
+    }
+    
+    @Test
+    public void testSendChargeInfoMessage() {
+        RestTemplate restTemplate = new RestTemplate();
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<String, String>();
+        form.add("method", "glsx.fcwechat.api.sendChargeInfoMessage");//<--指定方法名称
+        form.add("appKey", "48e5e13229b82c1b4e6e8c96151f0637");
+        form.add("v", "1.0.0");
+        form.add("sessionId", "mockSessionId1");
+        form.add("messageFormat", "json");
+        form.add("openId", "oJGDQwX3wFSihqT5MzHRE_JZ1MBY");
+        form.add("imsi", "460060082076516");
+        form.add("orderNo", "201712231455234");
+        form.add("chargePkg", "12G/月");
+        form.add("price", "100");
+        form.add("iccid", "467067001067327");
+        
+        //对请求参数列表进行签名
+        String sign = RopUtils.sign(form.toSingleValueMap(), "c24619ed7fef02a0ae16328146bca5f97cc6493957a2137b");
+        form.add("sign", sign);
+        String response = restTemplate.postForObject(
+                SERVER_URL, form, String.class);
+        System.out.println("response:\n" + response);
+    }
+}
+

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta http-equiv="Expires" content="0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Cache-control" content="no-cache">
+<meta http-equiv="Cache" content="no-cache">
+<title>实名认证结果</title>
+<link rel="stylesheet" href="../../css/weui.min.css">
+<link rel="stylesheet" href="../../css/jquery-weui.min.css">
+<link rel="stylesheet" href="../../css/style.css">
+</head>
+
+<body>
+	<div class="weui-msg weui-msg-custom">
+		<div class="weui-msg__text-area">
+			<h2 class="weui-msg__title">
+				<i id="authStatus"></i>
+				<!-- <i class="weui-icon-lg weui-icon-successed "></i> -->
+				<!-- <i id="authStatus" class="weui-icon-lg weui-icon-failed"></i> -->
+				<!--  <i class="weui-icon-lg weui-icon-tick"></i> -->
+				<!-- <i class="weui-icon-lg weui-icon-reviewing"></i> -->
+				<span class="weui-icon_msg"></span>
+			</h2>
+			<p class="weui-msg__desc"></p>
+		</div>
+		<div class="weui-msg__cells-area weui-cells">
+			<div class="weui-cell">
+				<div class="weui-cell__bd">
+					<p>卡号信息</p>
+				</div>
+			</div>
+			<div class="weui-cell">
+				<div class="weui-cell__bd">
+					<p>ICCID</p>
+				</div>
+				<div class="weui-cell__ft" id="iccid"></div>
+			</div>
+			<div class="weui-cell">
+				<div class="weui-cell__bd">
+					<p>IMSI</p>
+				</div>
+				<div class="weui-cell__ft" id="imsi"></div>
+			</div>
+			<div class="weui-cell">
+				<div class="weui-cell__bd">
+					<p>网卡号</p>
+				</div>
+				<div class="weui-cell__ft" id="cardNo"></div>
+			</div>
+		</div>
+		<div class="weui-msg__opr-area">
+			<p class="weui-btn-area">
+				<a href="fillMaterialCertification.html" class="weui-btn weui-btn_primary">重新提交审核</a>
+			</p>
+
+		</div>
+	</div>
+	<script src="../../js/libs/jqweui/jquery.min.js"></script>
+	<script src="../../js/libs/jqweui/jquery-weui.min.js"></script>
+	<script src="../../js/common.js" type="text/javascript"></script>
+	<script src="../../js/auth/authenticationResult.js"></script>
+</body>
+
+</html>

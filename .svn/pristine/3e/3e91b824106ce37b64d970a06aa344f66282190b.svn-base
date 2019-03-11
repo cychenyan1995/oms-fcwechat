@@ -1,0 +1,14 @@
+package com.glsx.oms.fcwechat.biz.flowcard.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.oreframework.datasource.mybatis.mapper.OreMapper;
+
+import com.glsx.oms.fcwechat.biz.flowcard.model.FlowCard;
+
+@Mapper
+public interface FlowcardMapper{
+
+	public void updateOpenId(FlowCard flowCard);
+	
+	public void updateOpenIdNotify(FlowCard flowCard);
+}
